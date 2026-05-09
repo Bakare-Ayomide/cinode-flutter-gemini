@@ -1,0 +1,6 @@
+{
+  "name": "Cinode - Ultimate Movie & TV Experience",
+  "description": "A feature-rich movie and TV streaming web app with watchlists, AI recommendations, and user reviews, powered by TMDB and MySQL.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
