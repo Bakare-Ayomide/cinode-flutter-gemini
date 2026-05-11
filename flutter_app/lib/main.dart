@@ -27,11 +27,15 @@ class CinodeApp extends StatelessWidget {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0A0A0B),
         primaryColor: Colors.red[600],
-        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
-          displayLarge: GoogleFonts.playfairDisplay(
-            fontStyle: FontStyle.italic,
-            fontWeight: FontWeight.w300,
-            letterSpacing: -2,
+        textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme).copyWith(
+          displayLarge: GoogleFonts.manrope(
+            fontWeight: FontWeight.bold,
+            letterSpacing: -1.5,
+            color: const Color(0xFFE5E5E5),
+          ),
+          displayMedium: GoogleFonts.manrope(
+            fontWeight: FontWeight.w600,
+            letterSpacing: -1,
             color: const Color(0xFFE5E5E5),
           ),
         ),

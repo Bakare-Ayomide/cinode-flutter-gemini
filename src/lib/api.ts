@@ -5,6 +5,16 @@ const api = axios.create({
   baseURL: '/api',
 });
 
+// Add error interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message = error.response?.data?.error || error.message;
+    console.error("API Error:", message);
+    return Promise.reject(new Error(message));
+  }
+);
+
 // Set user email in headers for all requests
 export const setAuthEmail = (email: string) => {
   api.defaults.headers.common['x-user-email'] = email;
@@ -38,5 +48,39 @@ export const movieApi = {
   saveAdminOverride: (override: any) => api.post('/admin/overrides', override),
   deleteAdminOverride: (id: number) => api.delete(`/admin/overrides/${id}`),
   getPublicSettings: () => api.get('/settings/public').then(res => res.data),
+  getDownloads: () => api.get<any[]>('/downloads').then(res => res.data),
+  addToDownloads: (item: any) => api.post('/downloads', item),
+  removeFromDownloads: (id: number) => api.delete(`/downloads/${id}`),
   checkout: (data: any) => api.post('/user/checkout', data).then(res => res.data),
+  // New Payments & Checkout
+  getCheckoutConfig: () => api.get('/checkout/config').then(res => res.data),
+  submitCheckout: (data: any) => api.post('/checkout/submit', data).then(res => res.data),
+  getUserPayments: () => api.get('/user/payments').then(res => res.data),
+  // Affiliates
+  getAffiliateDashboard: () => api.get('/affiliate/dashboard').then(res => res.data),
+  // Ads
+  getActiveAds: () => api.get('/ads/active').then(res => res.data),
+  trackAd: (id: number, action: 'impression' | 'click') => api.post(`/ads/track/${id}/${action}`),
+  // Notifications
+  getNotifications: () => api.get('/notifications').then(res => res.data),
+  markNotificationRead: (id: number) => api.post(`/notifications/read/${id}`),
+  markAllNotificationsRead: () => api.post('/notifications/read-all'),
+  // Admin Extensions
+  getAdminPayments: () => api.get('/admin/payments').then(res => res.data),
+  reviewPayment: (data: any) => api.post('/admin/payments/review', data),
+  getAdminPaymentConfig: () => api.get('/admin/payment-config').then(res => res.data),
+  saveAdminPaymentConfig: (config: any) => api.post('/admin/payment-config', config),
+  getAdminAffiliates: () => api.get('/admin/affiliates').then(res => res.data),
+  createAffiliate: (data: any) => api.post('/admin/affiliates', data),
+  toggleAffiliate: (data: any) => api.post('/admin/affiliates/toggle', data),
+  getAdminEarnings: () => api.get('/admin/affiliates/earnings').then(res => res.data),
+  payoutEarnings: (earning_ids: number[]) => api.post('/admin/affiliates/payout', { earning_ids }),
+  getAdminAds: () => api.get('/admin/ads').then(res => res.data),
+  saveAdminAd: (ad: any) => api.post('/admin/ads', ad),
+  deleteAdminAd: (id: number) => api.delete(`/admin/ads/${id}`),
+  getAdminNotifications: () => api.get('/admin/notifications').then(res => res.data),
+  sendNotification: (notif: any) => api.post('/admin/notifications', notif),
+  deleteAdminNotification: (id: number) => api.delete(`/admin/notifications/${id}`),
+  grantPremium: (email: string, duration: string) => api.post('/admin/users/grant-premium', { email, duration }),
+  revokePremium: (email: string) => api.post('/admin/users/revoke-premium', { email }),
 };

@@ -18,13 +18,24 @@ import {
   Menu,
   Shield,
   Download,
-  Trash2
+  Trash2,
+  Gem,
+  Bell,
+  ArrowUpRight,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { movieApi, setAuthEmail } from './lib/api';
 import { Movie, MovieDetails, Review, WatchlistItem } from './types';
 import AdminDashboard from './components/AdminDashboard';
+import DownloadsScreen from './components/DownloadsScreen';
+import ProfileScreen from './components/ProfileScreen';
 import { CustomVideoPlayer } from './components/CustomVideoPlayer';
+import { NotificationBell } from './components/NotificationBell';
+import { AdPlacement } from './components/AdPlacement';
+import { CheckoutPage } from './components/CheckoutPage';
+import { AffiliateDashboard } from './components/AffiliateDashboard';
 import { GoogleGenAI } from "@google/genai";
 
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
@@ -50,14 +61,25 @@ export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
-  const [activeTab, setActiveTab] = useState<'home' | 'watchlist' | 'search' | 'admin' | 'downloads'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'watchlist' | 'search' | 'admin' | 'downloads' | 'profile' | 'affiliate'>('home');
   const [isPremium, setIsPremium] = useState(false);
-  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [isAffiliate, setIsAffiliate] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [showDownloadApp, setShowDownloadApp] = useState(false);
   const [publicSettings, setPublicSettings] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState<boolean>(true);
+  const [globalError, setGlobalError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    const saved = localStorage.getItem('cinode_search_history');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [focusIndex, setFocusIndex] = useState<{row: number, col: number}>({row: 0, col: 0});
+
+  useEffect(() => {
+    localStorage.setItem('cinode_search_history', JSON.stringify(searchHistory));
+  }, [searchHistory]);
 
   useEffect(() => {
     checkDbStatus();
@@ -122,8 +144,10 @@ export default function App() {
       const data = await movieApi.getUserMe();
       setIsAdmin(data.is_admin);
       setIsPremium(data.is_premium);
+      setIsAffiliate(data.is_affiliate);
     } catch (err) {
       setIsAdmin(false);
+      setIsAffiliate(false);
     }
   };
 
@@ -155,9 +179,9 @@ export default function App() {
   const fetchRecs = async () => {
     try {
       const history = await movieApi.getHistory();
-      if (!history || history.length === 0) {
+      if (!Array.isArray(history) || history.length === 0) {
         const trendingRes = await movieApi.getTrending();
-        setRecs(trendingRes.results.slice(0, 5));
+        setRecs(trendingRes?.results?.slice(0, 5) || []);
         return;
       }
 
@@ -224,24 +248,25 @@ export default function App() {
         movieApi.discover({ region: 'US', sort_by: 'popularity.desc' }),
         movieApi.discover({ region: 'FR', sort_by: 'popularity.desc' }),
         movieApi.discover({ sort_by: 'release_date.desc' }),
-        movieApi.getWatchlist()
+        movieApi.getWatchlist().catch(() => []) // Don't block whole UI if watchlist fails
       ]);
 
-      setTrending(trendingRes.results);
-      setTrendingTv(tvRes.results);
-      setActionMovies(actionRes.results);
-      setComedyMovies(comedyRes.results);
-      setHorrorMovies(horrorRes.results);
-      setSciFiMovies(sciFiRes.results);
-      setUsMovies(usRes.results);
-      setFrMovies(frRes.results);
-      setUpcoming(upcomingRes.results);
-      setWatchlist(watchlistRes);
+      setTrending(trendingRes?.results || []);
+      setTrendingTv(tvRes?.results || []);
+      setActionMovies(actionRes?.results || []);
+      setComedyMovies(comedyRes?.results || []);
+      setHorrorMovies(horrorRes?.results || []);
+      setSciFiMovies(sciFiRes?.results || []);
+      setUsMovies(usRes?.results || []);
+      setFrMovies(frRes?.results || []);
+      setUpcoming(upcomingRes?.results || []);
+      setWatchlist(Array.isArray(watchlistRes) ? watchlistRes : []);
 
       // Fetch recs separately to not block main UI
       fetchRecs();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setGlobalError(err.message || "Failed to load content. Please check connection.");
     }
   };
 
@@ -270,9 +295,19 @@ export default function App() {
     if (val.length > 2) {
       const data = await movieApi.search(val);
       setSearchResults(data.results);
+      
+      // Auto-add to history if results found and not already in first 3 positions
+      if (data.results.length > 0 && !searchHistory.includes(val)) {
+        setSearchHistory(prev => [val, ...prev.filter(h => h !== val)].slice(0, 5));
+      }
     } else {
       setSearchResults([]);
     }
+  };
+
+  const clearSearchHistory = () => {
+    setSearchHistory([]);
+    localStorage.removeItem('cinode_search_history');
   };
 
   const openMovieDetails = async (movie: Movie) => {
@@ -299,11 +334,11 @@ export default function App() {
 
   const toggleWatchlist = async (e: React.MouseEvent, movie: Movie) => {
     e.stopPropagation();
-    const isInWatchlist = watchlist.some(w => w.movie_id === movie.id);
+    const isInWatchlist = Array.isArray(watchlist) && watchlist.some(w => w.movie_id === movie.id);
     try {
       if (isInWatchlist) {
         await movieApi.removeFromWatchlist(movie.id);
-        setWatchlist(prev => prev.filter(w => w.movie_id !== movie.id));
+        setWatchlist(prev => Array.isArray(prev) ? prev.filter(w => w.movie_id !== movie.id) : []);
       } else {
         await movieApi.addToWatchlist({
           user_email: user,
@@ -313,7 +348,7 @@ export default function App() {
           media_type: movie.media_type || 'movie'
         });
         const updated = await movieApi.getWatchlist();
-        setWatchlist(updated);
+        setWatchlist(Array.isArray(updated) ? updated : []);
       }
     } catch (err) {
       console.error(err);
@@ -364,7 +399,7 @@ export default function App() {
                 disabled={loading}
                 className="w-full bg-white text-black font-bold py-5 uppercase tracking-[0.2em] text-xs hover:bg-red-600 hover:text-white transition-all disabled:opacity-50 active:scale-95"
               >
-                {loading ? "AUTHENTICATING..." : "Enter Cinema"}
+                {loading ? "AUTHENTICATING..." : "SIGN IN / SIGN UP"}
               </button>
             </form>
           </div>
@@ -375,6 +410,34 @@ export default function App() {
 
   return (
     <div className="flex bg-[#0A0A0B] text-[#E5E5E5] font-sans h-screen overflow-hidden selection:bg-red-600/30 relative">
+      {/* Global Error Banner */}
+      <AnimatePresence>
+        {globalError && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -20, x: '-50%' }}
+            className="fixed top-20 left-1/2 z-[1000] w-[90%] max-w-lg bg-[#0D0D0E]/95 backdrop-blur-2xl text-white p-6 flex items-center justify-between shadow-[0_0_50px_rgba(220,38,38,0.3)] rounded-2xl border border-red-500/30 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-red-600/5 to-transparent pointer-events-none" />
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="bg-red-600 p-2.5 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+                <Shield size={20} className="text-white" />
+              </div>
+              <div className="space-y-0.5 text-left">
+                <p className="text-[10px] uppercase font-black tracking-[0.2em] text-red-500">System Alert</p>
+                <p className="text-sm font-medium text-white/90 leading-tight">{globalError}</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setGlobalError(null)} 
+              className="p-2 hover:bg-white/10 rounded-full transition-colors relative z-10 ml-4"
+            >
+              <X size={20} className="text-white/40" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Mobile Sidebar Toggle - Optimized Position */}
       <button 
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -383,36 +446,71 @@ export default function App() {
         {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
+      {/* Sidebar Backdrop Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Left Sidebar Nav */}
       <nav className={`
         fixed md:relative inset-y-0 left-0 z-50 
         w-[80px] h-full border-r border-white/10 
         flex flex-col items-center py-8 justify-between 
         bg-[#0A0A0B] transition-transform duration-300
+        overflow-y-auto no-scrollbar
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
-        <div className="flex flex-col gap-10 items-center">
+        <div className="flex flex-col gap-6 items-center">
           <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-red-600/20">C</div>
-          <div className="space-y-8 flex flex-col items-center">
-            <NavIcon active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home size={22} />} />
-            <NavIcon active={activeTab === 'search'} onClick={() => setActiveTab('search')} icon={<Search size={22} />} />
-            <NavIcon active={activeTab === 'watchlist'} onClick={() => setActiveTab('watchlist')} icon={<Bookmark size={22} />} />
-            <NavIcon active={activeTab === 'downloads'} onClick={() => setActiveTab('downloads')} icon={<Download size={22} />} />
+          <div className="space-y-5 flex flex-col items-center">
+            <NavIcon active={activeTab === 'home'} onClick={() => { setActiveTab('home'); setIsSidebarOpen(false); }} icon={<Home size={20} />} />
+            <NavIcon active={activeTab === 'search'} onClick={() => { setActiveTab('search'); setIsSidebarOpen(false); }} icon={<Search size={20} />} />
+            <NavIcon active={activeTab === 'watchlist'} onClick={() => { setActiveTab('watchlist'); setIsSidebarOpen(false); }} icon={<Bookmark size={20} />} />
+            <NavIcon active={activeTab === 'downloads'} onClick={() => { setActiveTab('downloads'); setIsSidebarOpen(false); }} icon={<Download size={20} />} />
+            {isAffiliate && (
+              <NavIcon active={activeTab === 'affiliate'} onClick={() => { setActiveTab('affiliate'); setIsSidebarOpen(false); }} icon={<ArrowUpRight size={20} />} />
+            )}
+            <NavIcon active={activeTab === 'profile'} onClick={() => { setActiveTab('profile'); setIsSidebarOpen(false); }} icon={<User size={20} />} />
             {isAdmin && (
-              <NavIcon active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} icon={<Shield size={22} className="text-red-600" />} />
+              <NavIcon active={activeTab === 'admin'} onClick={() => { setActiveTab('admin'); setIsSidebarOpen(false); }} icon={<Shield size={20} className="text-red-600" />} />
             )}
           </div>
         </div>
-        <div className="flex flex-col gap-6 items-center">
+        <div className="flex flex-col gap-4 items-center">
+            {!isPremium && (
+               <button 
+                  onClick={() => setShowCheckout(true)}
+                  className="w-10 h-10 bg-yellow-500 rounded-xl flex items-center justify-center text-black shadow-lg shadow-yellow-500/20 hover:scale-110 active:scale-95 transition-all group relative"
+                  title="Upgrade to Premium"
+               >
+                  <Gem size={20} className="animate-pulse" />
+                  <div className="absolute left-[110%] bg-yellow-500 text-black text-[8px] font-black px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">UPGRADE</div>
+               </button>
+            )}
             <button onClick={handleLogout} className="text-white/40 hover:text-red-600 transition-colors">
-                <LogOut size={22} />
+                <LogOut size={20} />
             </button>
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-400 to-pink-500 shadow-lg"></div>
         </div>
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-y-auto no-scrollbar relative">
+      <main className={`flex-1 flex flex-col overflow-y-auto no-scrollbar relative transition-opacity duration-300 ${isSidebarOpen ? 'opacity-20 pointer-events-none md:opacity-100 md:pointer-events-auto' : 'opacity-100'}`}>
+        {/* Floating Top Header for Notifications & Quick Actions */}
+        <div className="fixed top-0 right-0 left-0 md:left-[80px] z-[100] flex justify-end p-4 pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-3">
+             <NotificationBell />
+          </div>
+        </div>
+
         {!dbStatus && (
             <div className="bg-red-600/10 border-b border-red-600/20 px-12 py-2 flex items-center justify-between">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">Database Offline: Watchlist and Reviews are in read-only/demo mode.</p>
@@ -440,13 +538,13 @@ export default function App() {
                     className="space-y-8"
                   >
                     <div className="flex items-center gap-4">
-                      <span className="px-2 py-0.5 bg-white/10 backdrop-blur-md rounded text-[10px] uppercase tracking-[0.2em] font-bold">Featured</span>
+                      <span className="px-2 py-0.5 bg-white/10 backdrop-blur-md rounded text-[10px] uppercase tracking-[0.2em] font-bold text-white">Featured</span>
                       <span className="text-xs text-white/60 tracking-widest">{(trending[0].release_date || trending[0].first_air_date) ? new Date(trending[0].release_date || trending[0].first_air_date || '').getFullYear() : 'N/A'} • {trending[0].media_type?.toUpperCase()} • {trending[0].vote_average ? trending[0].vote_average.toFixed(1) : '0.0'} ★</span>
                     </div>
-                    <h1 className="text-4xl md:text-9xl font-serif italic font-light tracking-tighter leading-none mb-6">
+                    <h1 className="text-4xl md:text-9xl font-serif italic font-light tracking-tighter leading-none mb-6 text-white">
                       {trending[0].title || trending[0].name}
                     </h1>
-                    <p className="text-[#E5E5E5]/70 text-lg md:text-xl max-w-2xl font-light leading-relaxed drop-shadow-lg line-clamp-3">
+                    <p className="text-[#E5E5E5]/70 text-lg md:text-xl max-w-2xl font-light leading-relaxed drop-shadow-sm line-clamp-3">
                       {trending[0].overview}
                     </p>
                     <div className="flex items-center gap-6 pt-4">
@@ -470,10 +568,40 @@ export default function App() {
 
             {/* Content Rows - 10 Sections */}
             <div className="px-6 md:px-12 py-8 space-y-10">
+                {!isPremium && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="relative group cursor-pointer"
+                    onClick={() => setShowCheckout(true)}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-600 rounded-3xl blur-2xl opacity-10 group-hover:opacity-20 transition-opacity" />
+                    <div className="relative bg-[#121214] border border-white/5 rounded-3xl p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden">
+                       <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
+                          <Gem size={120} />
+                       </div>
+                       <div className="space-y-3 relative z-10 text-center md:text-left">
+                          <div className="flex items-center gap-2 justify-center md:justify-start">
+                            <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-red-500">Live Elevation</span>
+                          </div>
+                          <h2 className="text-3xl md:text-4xl font-serif italic font-light tracking-tighter uppercase italic">Unlock the Full Arsenal</h2>
+                          <p className="text-white/40 text-xs font-medium max-w-md">Get 4K HDR, Offline Downloads, Ad-free browsing, and access to the Private Archive Overrides.</p>
+                       </div>
+                       <button className="px-10 py-5 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl shadow-[0_20px_40px_rgba(220,38,38,0.3)] transition-all active:scale-95 whitespace-nowrap relative z-10">
+                          Upgrade Now — ₦1,500
+                       </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                <AdPlacement placement="homepage" />
                 {recs.length > 0 && (
                     <MovieRow title="Curated Recommendations" items={recs} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} isAI />
                 )}
                 <MovieRow title="Trending Now" items={trending.slice(1)} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} />
+                <AdPlacement placement="overlay" />
                 <MovieRow title="Must-Watch Series" items={trendingTv} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} />
                 <MovieRow title="Action Highlights" items={actionMovies} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} />
                 <MovieRow title="Comedy Night" items={comedyMovies} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} />
@@ -539,19 +667,15 @@ export default function App() {
         )}
 
         {activeTab === 'downloads' && (
-            <div className="px-6 md:px-12 py-12 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex justify-between items-end border-b border-white/10 pb-8">
-                    <h2 className="text-6xl font-serif italic font-light tracking-tighter uppercase italic">Offline Vault</h2>
-                    <span className="text-[10px] uppercase font-bold tracking-widest text-[#E5E5E5]/40">Secured Titles</span>
-                </div>
-                <div className="flex flex-col items-center justify-center py-40 space-y-8 bg-white/[0.01] border border-dashed border-white/5">
-                    <Download size={48} className="text-white/5" />
-                    <div className="text-center space-y-2">
-                        <p className="text-white/20 text-xs uppercase tracking-[0.2em] font-bold">The vault is currently sealed.</p>
-                        <p className="text-[10px] text-white/10 font-light">Content downloaded for offline viewing will emerge here.</p>
-                    </div>
-                </div>
-            </div>
+            <DownloadsScreen />
+        )}
+
+        {activeTab === 'profile' && user && (
+            <ProfileScreen userEmail={user} onUpgrade={() => setShowCheckout(true)} onLogout={handleLogout} />
+        )}
+
+        {activeTab === 'affiliate' && (
+            <AffiliateDashboard onBack={() => setActiveTab('home')} />
         )}
 
         {activeTab === 'search' && (
@@ -564,7 +688,7 @@ export default function App() {
                  value={searchQuery}
                  onChange={(e) => handleSearch(e.target.value)}
                  placeholder="SEARCH TITLES..."
-                 className="w-full bg-transparent border-b-2 border-white/10 py-10 pl-16 pr-8 text-5xl focus:outline-none focus:border-red-600 transition-all font-serif italic tracking-tighter placeholder:text-white/5 uppercase"
+                 className="w-full bg-transparent border-b-2 border-white/10 py-10 pl-16 pr-8 text-3xl md:text-5xl focus:outline-none focus:border-red-600 transition-all font-serif italic tracking-tighter placeholder:text-white/5 uppercase text-white"
                />
              </div>
  
@@ -580,8 +704,32 @@ export default function App() {
                    />
                  ))}
                </div>
+             ) : searchQuery.length === 0 && searchHistory.length > 0 ? (
+                <div className="space-y-8 max-w-2xl animate-in fade-in slide-in-from-left-4 duration-700">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-[10px] uppercase font-bold tracking-[0.3em] text-white/40">Recent Searches</h3>
+                        <button 
+                            onClick={clearSearchHistory}
+                            className="text-[10px] uppercase font-bold tracking-[0.3em] text-red-600 hover:text-red-500 transition-colors"
+                        >
+                            Clear history
+                        </button>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                        {searchHistory.map((query, i) => (
+                            <button 
+                                key={i}
+                                onClick={() => handleSearch(query)}
+                                className="px-6 py-3 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-xs font-bold uppercase tracking-widest flex items-center gap-2 group rounded-sm text-white"
+                            >
+                                <History size={14} className="text-white/20 group-hover:text-red-600 transition-colors" />
+                                {query}
+                            </button>
+                        ))}
+                    </div>
+                </div>
              ) : (
-                <div className="py-32 opacity-10">
+                <div className="py-32 opacity-10 text-white">
                     <TrendingUp size={100} strokeWidth={1} />
                 </div>
              )}
@@ -602,106 +750,106 @@ export default function App() {
                animate={{ opacity: 1 }}
                exit={{ opacity: 0 }}
                onClick={() => setSelectedMovie(null)}
-               className="absolute inset-0 bg-black/95 backdrop-blur-md"
+               className="absolute inset-0 bg-white/90 dark:bg-black/95 backdrop-blur-md"
             />
             
             <motion.div 
               initial={{ scale: 0.98, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.98, opacity: 0 }}
-              className="relative w-full h-full bg-[#0A0A0B] flex flex-col md:flex-row overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)]"
+              className="relative w-full h-full bg-white dark:bg-[#0A0A0B] flex flex-col md:flex-row overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.1)] dark:shadow-[0_0_100px_rgba(0,0,0,1)]"
             >
               <button 
                 onClick={() => setSelectedMovie(null)}
-                className="absolute right-8 top-8 z-50 p-3 bg-white/5 hover:bg-red-600 rounded-full transition-all hover:scale-110"
+                className="absolute right-8 top-8 z-50 p-3 bg-gray-100 dark:bg-white/5 hover:bg-red-600 rounded-full transition-all hover:scale-110 text-gray-900 dark:text-white"
                >
                 <X size={24} />
               </button>
 
               {/* Main Detail Content */}
-              <div className="flex-1 overflow-y-auto no-scrollbar">
-                <div className="h-[400px] md:h-[60vh] w-full relative">
+              <div className="flex-1 overflow-y-auto no-scrollbar pt-6 md:pt-0">
+                <div className="h-[300px] md:h-[60vh] w-full relative">
                   <img src={BACKDROP_BASE + selectedMovie.backdrop_path} className="w-full h-full object-cover" alt="" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0B] via-transparent to-transparent" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0B] via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-[#0A0A0B] via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-white dark:from-[#0A0A0B] via-transparent to-transparent" />
                 </div>
                 
-                <div className="px-12 md:px-20 -mt-20 relative space-y-20 pb-32">
-                   <div className="space-y-10">
-                        <div className="flex items-center gap-4">
-                            <span className="px-2 py-0.5 bg-white/10 rounded text-[10px] uppercase tracking-widest font-bold">Details</span>
-                            <span className="text-xs text-white/40">{(selectedMovie.release_date || selectedMovie.first_air_date) ? new Date(selectedMovie.release_date || selectedMovie.first_air_date || '').getFullYear() : 'N/A'} • {movieDetails?.runtime || '0'} MIN</span>
+                <div className="px-6 md:px-20 -mt-20 md:-mt-32 relative space-y-10 md:space-y-20 pb-32">
+                   <div className="space-y-6 md:space-y-10">
+                        <div className="flex items-center gap-3">
+                            <span className="px-2 py-0.5 bg-gray-900/10 dark:bg-white/10 rounded text-[8px] md:text-[10px] uppercase tracking-widest font-bold text-gray-900 dark:text-white">Details</span>
+                            <span className="text-[10px] md:text-xs text-gray-400 dark:text-white/40">{(selectedMovie.release_date || selectedMovie.first_air_date) ? new Date(selectedMovie.release_date || selectedMovie.first_air_date || '').getFullYear() : 'N/A'} • {movieDetails?.runtime || '0'} MIN</span>
                         </div>
-                        <h2 className="text-4xl md:text-9xl font-serif italic font-light tracking-tighter leading-[0.8] uppercase italic max-w-4xl">
+                        <h2 className="text-2xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tighter leading-tight lg:leading-[1] uppercase max-w-4xl text-gray-900 dark:text-white">
                             {selectedMovie.title || selectedMovie.name}
                         </h2>
                         
-                        <div className="flex items-center gap-8">
+                        <div className="flex flex-wrap items-center gap-3 md:gap-8">
                             <button 
                                 onClick={() => setPlayingMovie(selectedMovie)}
-                                className="px-10 py-4 bg-white text-black font-bold uppercase tracking-[0.2em] text-xs hover:bg-red-600 hover:text-white transition-all active:scale-95"
+                                className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-gray-900 dark:bg-white text-white dark:text-black font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs hover:bg-red-600 hover:text-white transition-all active:scale-95"
                             >
                                 Play Film
                             </button>
                             <button 
                                 onClick={() => {
                                     if (isPremium) {
-                                        alert("Initiating offline transfer...");
+                                        setShowDownloadApp(true);
                                     } else {
-                                        setShowUpgrade(true);
+                                        setShowCheckout(true);
                                     }
                                 }}
-                                className="px-10 py-5 bg-white text-black font-bold uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-3 transition-all hover:bg-neutral-200 active:scale-95 shadow-[0_0_40px_-5px_rgba(255,255,255,0.1)]"
+                                className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-[11px] flex items-center justify-center gap-2 md:gap-3 transition-all hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 active:scale-95"
                             >
-                                <Download size={16} /> {isPremium ? 'Download Offline' : 'Unlock Downloads'}
+                                <Download size={14} className="md:w-4 md:h-4" /> {isPremium ? 'Download' : 'Download'}
                             </button>
                             <button 
                                 onClick={(e) => toggleWatchlist(e, selectedMovie)}
-                                className="px-10 py-5 border border-white/20 font-bold uppercase tracking-[0.2em] text-[11px] backdrop-blur-sm hover:bg-white/5 transition-all"
+                                className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 border border-gray-300 dark:border-white/20 font-bold uppercase tracking-[0.2em] text-[10px] md:text-[11px] backdrop-blur-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-all text-center text-gray-900 dark:text-white"
                             >
-                                {watchlist.some(w => w.movie_id === selectedMovie?.id) ? 'Remove List' : '+ Add List'}
+                                {watchlist.some(w => w.movie_id === selectedMovie?.id) ? 'Saved' : '+ List'}
                             </button>
                         </div>
 
-                        <div className="grid md:grid-cols-12 gap-12 pt-10 border-t border-white/5">
-                            <div className="md:col-span-8 space-y-10">
-                                <p className="text-[#E5E5E5]/80 text-2xl font-light leading-relaxed font-serif italic">
+                        <div className="grid md:grid-cols-12 gap-8 md:gap-12 pt-8 md:pt-10 border-t border-gray-100 dark:border-white/5">
+                            <div className="md:col-span-8 space-y-6 md:space-y-8">
+                                <p className="text-gray-600 dark:text-[#E5E5E5]/70 text-sm md:text-base lg:text-lg font-light leading-relaxed font-serif">
                                     {selectedMovie.overview}
                                 </p>
                                 
-                                <div className="space-y-8">
-                                    <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-white/40">Cast</h3>
-                                    <div className="flex flex-wrap gap-4">
-                                        {movieDetails?.credits?.cast?.slice(0, 8).map(c => (
-                                            <div key={c.id} className="flex items-center gap-3 bg-white/5 pr-4 rounded-full border border-white/5">
-                                                <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800">
+                                <div className="space-y-6 md:space-y-8">
+                                    <h3 className="text-[10px] md:text-xs uppercase tracking-[0.3em] font-bold text-gray-400 dark:text-white/40">Cast</h3>
+                                    <div className="flex flex-wrap gap-2 md:gap-4">
+                                        {movieDetails?.credits?.cast?.slice(0, 6).map(c => (
+                                            <div key={c.id} className="flex items-center gap-2 md:gap-3 bg-gray-50 dark:bg-white/5 pr-3 md:pr-4 rounded-full border border-gray-100 dark:border-white/5">
+                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden bg-gray-200 dark:bg-zinc-800">
                                                     {c.profile_path && <img src={IMAGE_BASE + c.profile_path} className="w-full h-full object-cover" />}
                                                 </div>
-                                                <span className="text-[10px] font-bold uppercase tracking-widest">{c.name}</span>
+                                                <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-gray-900 dark:text-white">{c.name}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             </div>
                             
-                            <div className="md:col-span-4 space-y-10 border-l border-white/5 pl-12">
+                            <div className="md:col-span-4 space-y-6 md:space-y-10 border-t md:border-t-0 md:border-l border-gray-100 dark:border-white/5 pt-8 md:pt-0 md:pl-12">
                                 <div>
-                                    <div className="text-xs uppercase tracking-widest text-white/40 mb-4">Genre</div>
+                                    <div className="text-[10px] md:text-xs uppercase tracking-widest text-gray-400 dark:text-white/40 mb-3 md:mb-4">Genre</div>
                                     <div className="flex flex-wrap gap-2">
                                         {movieDetails?.genres.map(g => (
-                                            <span key={g.id} className="text-[10px] font-bold uppercase tracking-widest bg-white/5 px-3 py-1 rounded">{g.name}</span>
+                                            <span key={g.id} className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest bg-gray-50 dark:bg-white/5 px-2 md:px-3 py-1 rounded text-gray-900 dark:text-white">{g.name}</span>
                                         ))}
                                     </div>
                                 </div>
                                 {movieDetails?.production_countries[0] && (
                                     <div>
-                                        <div className="text-xs uppercase tracking-widest text-white/40 mb-2">Production</div>
-                                        <div className="text-2xl font-serif italic font-light">{movieDetails.production_countries[0].name}</div>
+                                        <div className="text-[10px] md:text-xs uppercase tracking-widest text-gray-400 dark:text-white/40 mb-2">Production</div>
+                                        <div className="text-lg md:text-2xl font-serif font-light text-gray-900 dark:text-white">{movieDetails.production_countries[0].name}</div>
                                     </div>
                                 )}
                             </div>
                         </div>
-                   </div>
+                    </div>
 
                     {/* Recommendations Sections */}
                     <div className="pt-20 space-y-20">
@@ -757,19 +905,55 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Upgrade Overlay */}
+      {/* Checkout Screen */}
       <AnimatePresence>
-        {showUpgrade && (
-            <UpgradeOverlay 
-                publicSettings={publicSettings}
-                userEmail={user}
-                onClose={() => setShowUpgrade(false)}
-                onSuccess={() => {
-                    setShowUpgrade(false);
-                    setIsPremium(true);
-                    checkAdminStatus(); // Refresh status
-                }}
-            />
+        {showCheckout && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setShowCheckout(false)}
+                    className="absolute inset-0 bg-black/90 backdrop-blur-md"
+                />
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                    className="relative w-full max-w-sm bg-white dark:bg-[#0A0A0B] rounded-3xl border border-gray-100 dark:border-white/5 shadow-2xl overflow-hidden flex flex-col"
+                >
+                    <div className="p-4 border-b border-gray-100 dark:border-white/5 flex items-center justify-between bg-gray-50 dark:bg-white/[0.02] text-gray-900 dark:text-white">
+                        <div>
+                            <h2 className="text-xs font-black uppercase tracking-[0.2em] italic font-serif">Premium Marketplace</h2>
+                            <p className="text-[7px] text-gray-400 dark:text-white/20 font-black uppercase tracking-[0.3em] mt-0.5">Secure Transaction Portal</p>
+                        </div>
+                        <button 
+                            onClick={() => setShowCheckout(false)}
+                            className="p-1 px-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-400 dark:text-white/20 hover:text-red-500 transition-all flex items-center gap-1"
+                        >
+                            <span className="text-[8px] font-black uppercase tracking-widest">Close</span>
+                            <X size={14} />
+                        </button>
+                    </div>
+                    <div className="max-h-[85vh] overflow-y-auto no-scrollbar">
+                        <CheckoutPage 
+                            user={{ email: user! }} 
+                            onSuccess={() => {
+                                setShowCheckout(false);
+                                checkAdminStatus();
+                            }} 
+                            onBack={() => setShowCheckout(false)}
+                        />
+                    </div>
+                </motion.div>
+            </div>
+        )}
+      </AnimatePresence>
+
+      {/* Download App Modal */}
+      <AnimatePresence>
+        {showDownloadApp && (
+            <DownloadAppModal onClose={() => setShowDownloadApp(false)} />
         )}
       </AnimatePresence>
     </div>
@@ -783,7 +967,7 @@ function UpgradeOverlay({ publicSettings, userEmail, onClose, onSuccess }: any) 
     setLoading(true);
     try {
       await movieApi.checkout({
-        user_email: userEmail,
+        email: userEmail,
         plan: 'Monthly premium',
         transaction_id: `WEB-${Date.now()}`
       });
@@ -808,52 +992,57 @@ function UpgradeOverlay({ publicSettings, userEmail, onClose, onSuccess }: any) 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="relative w-full max-w-xl bg-[#0D0D0E] border border-white/5 p-12 space-y-12"
+        className="relative w-full max-w-xl"
       >
-        <button onClick={onClose} className="absolute right-8 top-8 text-white/20 hover:text-white transition-colors">
-            <X size={20} />
+        <button 
+            onClick={onClose} 
+            className="absolute -top-4 -right-4 md:-top-6 md:-right-6 p-4 bg-red-600 rounded-full text-white shadow-2xl shadow-red-600/40 hover:scale-110 transition-all active:scale-90 z-[130]"
+        >
+            <X size={24} />
         </button>
 
-        <div className="space-y-4">
-            <h2 className="text-6xl font-serif italic font-light tracking-tighter uppercase italic">Premium Access</h2>
-            <p className="text-white/40 text-sm font-light">Unlock the vault. Cinema without boundaries.</p>
-        </div>
-
-        <div className="space-y-8">
-            <div className="flex items-baseline gap-4">
-                <span className="text-5xl font-serif italic">${publicSettings?.premium_price_monthly || '9.99'}</span>
-                <span className="text-xs uppercase tracking-widest text-white/20 font-bold">Per Month</span>
-            </div>
-            
+        <div className="bg-[#0D0D0E] border border-white/5 p-8 md:p-12 space-y-8 md:space-y-12 overflow-y-auto max-h-[90vh] no-scrollbar">
             <div className="space-y-4">
-                {[
-                    'Master Vault Access',
-                    'Offline Cinematic Download',
-                    '4K Ultra HD Streaming',
-                    'Early Access to Curations'
-                ].map((f, i) => (
-                    <div key={i} className="flex items-center gap-4 text-xs uppercase tracking-widest font-bold">
-                        <Check size={14} className="text-red-500" />
-                        <span>{f}</span>
-                    </div>
-                ))}
+                <h2 className="text-6xl font-serif italic font-light tracking-tighter uppercase italic">Premium Access</h2>
+                <p className="text-white/40 text-sm font-light">Unlock the vault. Cinema without boundaries.</p>
             </div>
 
-            <div className="pt-8 border-t border-white/5 space-y-4">
-                <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold">Payment Instructions</p>
-                <div className="p-4 bg-white/[0.02] border border-white/5 rounded text-xs text-white/60">
-                    {publicSettings?.payment_info || 'PayPal: admin@example.com'}
+            <div className="space-y-8">
+                <div className="flex items-baseline gap-4">
+                    <span className="text-5xl font-serif italic">${publicSettings?.premium_price_monthly || '9.99'}</span>
+                    <span className="text-xs uppercase tracking-widest text-white/20 font-bold">Per Month</span>
+                </div>
+                
+                <div className="space-y-4">
+                    {[
+                        'Master Vault Access',
+                        'Offline Cinematic Download',
+                        '4K Ultra HD Streaming',
+                        'Early Access to Curations'
+                    ].map((f, i) => (
+                        <div key={i} className="flex items-center gap-4 text-xs uppercase tracking-widest font-bold">
+                            <Check size={14} className="text-red-500" />
+                            <span>{f}</span>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="pt-8 border-t border-white/5 space-y-4">
+                    <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold">Payment Instructions</p>
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded text-xs text-white/60">
+                        {publicSettings?.payment_info || 'PayPal: admin@example.com'}
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <button 
-            disabled={loading}
-            onClick={handleCheckout}
-            className="w-full bg-red-600 text-white font-bold py-6 uppercase tracking-[0.2em] text-xs hover:bg-white hover:text-black transition-all active:scale-95 disabled:opacity-50"
-        >
-            {loading ? 'Processing Transaction...' : 'Complete Upgrade'}
-        </button>
+            <button 
+                disabled={loading}
+                onClick={handleCheckout}
+                className="w-full bg-red-600 text-white font-bold py-6 uppercase tracking-[0.2em] text-xs hover:bg-white hover:text-black transition-all active:scale-95 disabled:opacity-50"
+            >
+                {loading ? 'Processing Transaction...' : 'Complete Upgrade'}
+            </button>
+        </div>
       </motion.div>
     </div>
   );
@@ -863,9 +1052,10 @@ function NavIcon({ active, onClick, icon }: any) {
   return (
     <button 
       onClick={onClick}
-      className={`p-3 rounded-xl transition-all duration-300 ${active ? 'bg-white/10 text-white shadow-xl' : 'text-white/40 hover:text-white'}`}
+      className={`p-3 rounded-xl transition-all duration-300 relative group ${active ? 'bg-red-600 text-white shadow-lg shadow-red-600/40 scale-110' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
     >
       {icon}
+      {active && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-red-600 blur-xl opacity-20 -z-10" />}
     </button>
   );
 }
@@ -1122,4 +1312,52 @@ function MovieRow({ title, items, onCardClick, onToggleWatchlist, watchlist, isA
               </div>
           </section>
       );
+  }
+
+  function DownloadAppModal({ onClose }: { onClose: () => void }) {
+    return (
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/95 backdrop-blur-3xl"
+        />
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="relative w-full max-w-lg bg-[#0D0D0E] border border-white/5 p-12 space-y-10 text-center"
+        >
+          <div className="space-y-4">
+              <div className="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center mx-auto text-white shadow-2xl shadow-red-600/40 mb-8">
+                  <Download size={32} />
+              </div>
+              <h2 className="text-5xl font-serif italic font-light tracking-tighter uppercase italic">Offline Core</h2>
+              <p className="text-white/40 text-sm font-light leading-relaxed">
+                  High-bitrate cinematic downloads are exclusive to our mobile environment.
+              </p>
+          </div>
+
+          <div className="space-y-6 pt-6">
+              <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-white/20">Available on iOS & Android</p>
+              <a 
+                  href="http://linkto.app" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="block w-full bg-white text-black font-bold py-6 uppercase tracking-[0.2em] text-xs hover:bg-red-600 hover:text-white transition-all active:scale-95"
+              >
+                  Download App
+              </a>
+              <button 
+                  onClick={onClose}
+                  className="text-[10px] uppercase tracking-widest font-bold text-white/20 hover:text-white transition-colors"
+              >
+                  Maybe Later
+              </button>
+          </div>
+        </motion.div>
+      </div>
+    );
   }

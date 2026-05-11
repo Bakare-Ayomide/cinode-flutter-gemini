@@ -10,7 +10,8 @@ import {
   SkipForward,
   FastForward,
   Rewind,
-  Loader2
+  Loader2,
+  MonitorPlay
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -39,32 +40,117 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(1);
+  const [buffered, setBuffered] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [quality, setQuality] = useState('4K Master');
   const controlsTimeout = useRef<any>(null);
 
   useEffect(() => {
-    const handleMouseMove = () => {
-      setShowControls(true);
-      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-      controlsTimeout.current = setTimeout(() => {
-        if (isPlaying) setShowControls(false);
-      }, 3000);
+    const video = videoRef.current;
+    if (!video) return;
+
+    const updateProgress = () => {
+      if (video.buffered.length > 0) {
+        const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+        setBuffered(bufferedEnd);
+      }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
+    const handleWaiting = () => setIsLoading(true);
+    const handlePlaying = () => {
+      setIsLoading(false);
+      setIsPlaying(true);
+    };
+    const handlePause = () => setIsPlaying(false);
+    const handleCanPlay = () => setIsLoading(false);
+
+    video.addEventListener('progress', updateProgress);
+    video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('playing', handlePlaying);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('canplay', handleCanPlay);
+
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
+      video.removeEventListener('progress', updateProgress);
+      video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('playing', handlePlaying);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('canplay', handleCanPlay);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+      videoRef.current.volume = volume;
+    }
+  }, [isMuted, volume]);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
+  useEffect(() => {
+    const handleActivity = () => {
+      setShowControls(true);
+      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+      
+      if (isPlaying) {
+        controlsTimeout.current = setTimeout(() => {
+          setShowControls(false);
+        }, 3000);
+      }
+    };
+
+    // Initialize or reset based on playing state
+    if (isPlaying) {
+      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+      controlsTimeout.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    } else {
+      setShowControls(true);
+      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+    }
+
+    const events = ['mousemove', 'mousedown', 'touchstart', 'keydown'];
+    events.forEach(event => window.addEventListener(event, handleActivity));
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, handleActivity));
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
     };
   }, [isPlaying]);
 
-  const togglePlay = () => {
+  const playPromiseRef = useRef<Promise<void> | null>(null);
+
+  const togglePlay = async () => {
     if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
+      if (videoRef.current.paused) {
+        try {
+          playPromiseRef.current = videoRef.current.play();
+          await playPromiseRef.current;
+          playPromiseRef.current = null;
+        } catch (error) {
+          playPromiseRef.current = null;
+          console.error("Playback failed:", error);
+        }
       } else {
-        videoRef.current.play();
+        // If there's a pending play promise, we should wait for it before pausing
+        // to avoid the "interrupted by a call to pause" error
+        if (playPromiseRef.current) {
+          try {
+            await playPromiseRef.current;
+          } catch (e) {
+            // ignore
+          }
+        }
+        videoRef.current.pause();
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -127,6 +213,33 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     }
   };
 
+  const togglePiP = async () => {
+    try {
+      if (videoRef.current) {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else {
+          await videoRef.current.requestPictureInPicture();
+        }
+      }
+    } catch (e) {
+      console.error("PiP Error", e);
+    }
+  };
+
+  const [lastVolume, setLastVolume] = useState(1);
+
+  const toggleMute = () => {
+    if (isMuted || volume === 0) {
+      setIsMuted(false);
+      setVolume(lastVolume > 0 ? lastVolume : 1);
+    } else {
+      setLastVolume(volume);
+      setIsMuted(true);
+      setVolume(0);
+    }
+  };
+
   const showSkipIntro = introStart !== undefined && introEnd !== undefined && 
                      currentTime >= introStart && currentTime <= introEnd;
 
@@ -135,15 +248,22 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       {/* Video Element */}
       <video
         ref={videoRef}
-        src={src}
+        src={src.replace(/ /g, '%20')}
         poster={poster}
-        className="w-full h-full object-contain"
+        className="w-full h-full object-contain pointer-events-auto"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onWaiting={() => setIsLoading(true)}
         onPlaying={() => setIsLoading(false)}
         onClick={togglePlay}
+        onContextMenu={(e) => e.preventDefault()}
+        onDoubleClick={(e) => e.preventDefault()}
         playsInline
+        webkit-playsinline="true"
+        x5-playsinline="true"
+        controlsList="nodownload nofullscreen noremoteplayback"
+        disablePictureInPicture={false}
+        disableRemotePlayback
       />
 
       {/* Loading Overlay */}
@@ -181,27 +301,39 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-30 bg-gradient-to-t from-black/80 via-transparent to-black/60 flex flex-col justify-between"
+            className="absolute inset-0 z-30 bg-gradient-to-t from-black/90 via-transparent to-black/60 flex flex-col justify-between"
           >
             {/* Top Bar */}
-            <div className="p-6 md:p-10 flex justify-between items-start">
-              <div className="space-y-1">
-                <h2 className="text-xl md:text-3xl font-serif italic font-light tracking-tighter text-white/90">{title || 'Cinode Feature'}</h2>
-                <div className="flex items-center gap-3">
-                    <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] font-bold uppercase rounded">4K HDR</span>
-                    <span className="text-[10px] text-white/40 uppercase tracking-widest">Digital Master</span>
+            <div className="p-4 md:p-10 flex justify-between items-start">
+              <div className="space-y-1 max-w-[70%]">
+                <h2 className="text-lg md:text-3xl font-serif italic font-light tracking-tighter text-white/90 truncate">{title || 'Cinode Feature'}</h2>
+                <div className="flex items-center gap-2 md:gap-3">
+                    <span className="px-1 py-0.5 md:px-1.5 md:py-0.5 bg-red-600 text-white text-[6px] md:text-[8px] font-bold uppercase rounded">4K HDR</span>
+                    <span className="text-[8px] md:text-[10px] text-white/40 uppercase tracking-widest truncate">Cinode Master Stream</span>
                 </div>
               </div>
               <button 
                 onClick={onClose}
-                className="p-3 bg-white/5 hover:bg-red-600 rounded-full transition-all"
+                className="p-2 md:p-3 bg-white/5 hover:bg-red-600 rounded-full transition-all active:scale-90"
               >
-                <RotateCcw size={20} className="-scale-x-100" />
+                <RotateCcw size={18} className="-scale-x-100" />
               </button>
             </div>
 
             {/* Middle: Skip Intro Button */}
-            <div className="flex-1 flex items-center justify-center pointer-events-none">
+            <div className="flex-1 flex items-center justify-center pointer-events-none relative">
+              <AnimatePresence>
+                {isLoading && (
+                   <motion.div
+                     initial={{ scale: 0.8, opacity: 0 }}
+                     animate={{ scale: 1, opacity: 1 }}
+                     exit={{ scale: 1.2, opacity: 0 }}
+                     className="p-8 bg-black/40 backdrop-blur-2xl rounded-full border border-white/10"
+                   >
+                     <Loader2 className="text-red-600 animate-spin" size={48} />
+                   </motion.div>
+                )}
+              </AnimatePresence>
               <AnimatePresence>
                 {showSkipIntro && (
                   <motion.button
@@ -209,7 +341,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 50 }}
                     onClick={skipIntro}
-                    className="pointer-events-auto absolute right-12 bottom-32 px-10 py-4 bg-white/10 backdrop-blur-xl border border-white/20 text-white font-bold uppercase tracking-[0.3em] text-[10px] hover:bg-red-600 hover:border-red-600 transition-all active:scale-95 flex items-center gap-3"
+                    className="pointer-events-auto absolute right-6 md:right-12 bottom-24 md:bottom-32 px-6 md:px-10 py-3 md:py-4 bg-white/10 backdrop-blur-xl border border-white/20 text-white font-bold uppercase tracking-[0.3em] text-[8px] md:text-[10px] hover:bg-red-600 hover:border-red-600 transition-all active:scale-95 flex items-center gap-3"
                   >
                     Skip Intro <SkipForward size={14} />
                   </motion.button>
@@ -218,68 +350,149 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             </div>
 
             {/* Bottom Bar */}
-            <div className="p-6 md:p-10 space-y-6">
+            <div className="p-4 md:p-10 space-y-4 md:space-y-6">
               {/* Progress Slider */}
-              <div className="relative group/seeker">
+              <div className="relative group/seeker flex flex-col gap-2">
+                <div className="relative h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                   {/* Buffered Bar */}
+                   <div 
+                     className="absolute top-0 left-0 h-full bg-white/20 transition-all duration-300"
+                     style={{ width: `${duration > 0 ? (buffered / duration) * 100 : 0}%` }}
+                   />
+                   {/* Current Progress Bar */}
+                   <div 
+                      className="absolute top-0 left-0 h-full bg-red-600 pointer-events-none" 
+                      style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                   />
+                </div>
                 <input 
                   type="range"
                   min="0"
                   max={duration}
+                  step="0.1"
                   value={currentTime}
                   onChange={handleSeek}
-                  className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-red-600"
+                  className="absolute top-0 left-0 w-full h-1 opacity-0 cursor-pointer z-10"
                 />
-                <div 
-                    className="absolute top-0 left-0 h-1 bg-red-600 rounded-full pointer-events-none transition-all" 
-                    style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                />
+                
+                <div className="flex justify-between items-center px-1">
+                   <div className="text-[8px] md:text-[10px] font-mono tracking-widest text-white/40">
+                      <span className="text-white font-bold">{formatTime(currentTime)}</span>
+                   </div>
+                   <div className="text-[8px] md:text-[10px] font-mono tracking-widest text-white/40">
+                      -{formatTime(duration - currentTime)}
+                   </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-8">
-                  <button onClick={togglePlay} className="text-white hover:text-red-500 transition-colors">
-                    {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}
+                <div className="flex items-center gap-4 md:gap-8">
+                  <button onClick={togglePlay} className="text-white hover:text-red-500 transition-colors active:scale-90">
+                    {isPlaying ? <Pause size={28} md:size={32} fill="currentColor" /> : <Play size={28} md:size={32} fill="currentColor" />}
                   </button>
                   
-                  <div className="flex items-center gap-6">
-                    <button onClick={rewind} className="text-white/60 hover:text-white transition-colors">
-                        <Rewind size={20} />
+                  <div className="flex items-center gap-4 md:gap-6">
+                    <button onClick={rewind} className="text-white/60 hover:text-white transition-colors active:scale-90">
+                        <Rewind size={18} md:size={20} />
                     </button>
-                    <button onClick={skipForward} className="text-white/60 hover:text-white transition-colors">
-                        <FastForward size={20} />
+                    <button onClick={skipForward} className="text-white/60 hover:text-white transition-colors active:scale-90">
+                        <FastForward size={18} md:size={20} />
                     </button>
-                  </div>
-
-                  <div className="text-[10px] font-mono tracking-widest text-white/60">
-                    <span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-3 group/volume">
-                    <button onClick={() => setIsMuted(!isMuted)} className="text-white/60 hover:text-white">
-                        {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                <div className="flex items-center gap-4 md:gap-6 relative">
+                  <div className="hidden sm:flex items-center gap-3 group/volume">
+                    <button onClick={toggleMute} className="text-white/60 hover:text-white transition-all">
+                        {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
                     </button>
                     <input 
                         type="range"
                         min="0"
                         max="1"
-                        step="0.1"
+                        step="0.05"
                         value={isMuted ? 0 : volume}
                         onChange={(e) => {
                             const v = Number(e.target.value);
                             setVolume(v);
-                            if (videoRef.current) videoRef.current.volume = v;
                             setIsMuted(v === 0);
+                            if (v > 0) setLastVolume(v);
                         }}
-                        className="w-0 group-hover/volume:w-20 transition-all duration-300 h-1 accent-red-600 appearance-none bg-white/20 rounded-full"
+                        className="w-0 group-hover/volume:w-16 md:group-hover/volume:w-24 transition-all duration-300 h-1 accent-red-600 appearance-none bg-white/20 rounded-full"
                     />
                   </div>
-                  <button onClick={toggleFullscreen} className="text-white/60 hover:text-white">
-                    <Maximize size={20} />
+                  
+                  {/* PiP Button */}
+                  <button 
+                    onClick={togglePiP} 
+                    className="text-white/60 hover:text-white transition-all active:scale-90"
+                    title="Picture in Picture"
+                  >
+                    <MonitorPlay size={18} md:size={20} />
                   </button>
-                  <button className="text-white/60 hover:text-white">
-                    <Settings size={20} />
+
+                  {/* Speed Menu */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => { setShowSpeedMenu(!showSpeedMenu); setShowQualityMenu(false); }} 
+                      className={`text-[10px] font-bold tracking-widest px-2 py-1 rounded border transition-all ${showSpeedMenu ? 'bg-red-600 border-red-600 text-white' : 'text-white/40 border-white/10 hover:text-white hover:border-white/20'}`}
+                    >
+                      {playbackRate}x
+                    </button>
+                    <AnimatePresence>
+                      {showSpeedMenu && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          className="absolute bottom-full mb-4 right-0 bg-black/90 backdrop-blur-xl border border-white/10 p-2 rounded-xl min-w-[100px] space-y-1"
+                        >
+                          {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
+                            <button
+                              key={rate}
+                              onClick={() => { setPlaybackRate(rate); setShowSpeedMenu(false); }}
+                              className={`w-full text-left px-3 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all ${playbackRate === rate ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+                            >
+                              {rate}x Speed
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Quality Menu */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => { setShowQualityMenu(!showQualityMenu); setShowSpeedMenu(false); }} 
+                      className={`p-2 rounded-full transition-all ${showQualityMenu ? 'bg-red-600 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                    >
+                      <Settings size={18} md:size={20} />
+                    </button>
+                    <AnimatePresence>
+                      {showQualityMenu && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          className="absolute bottom-full mb-4 right-0 bg-black/90 backdrop-blur-xl border border-white/10 p-2 rounded-xl min-w-[120px] space-y-1"
+                        >
+                          {['4K Master', '1080p HQ', '720p', 'Auto'].map((q) => (
+                            <button
+                              key={q}
+                              onClick={() => { setQuality(q); setShowQualityMenu(false); }}
+                              className={`w-full text-left px-3 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all ${quality === q ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+                            >
+                              {q}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <button onClick={toggleFullscreen} className="text-white/60 hover:text-white active:scale-90">
+                    <Maximize size={18} md:size={20} />
                   </button>
                 </div>
               </div>

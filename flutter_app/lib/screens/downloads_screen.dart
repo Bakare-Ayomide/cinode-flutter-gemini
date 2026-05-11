@@ -12,9 +12,7 @@ class DownloadsScreen extends StatefulWidget {
 }
 
 class _DownloadsScreenState extends State<DownloadsScreen> {
-  // In a real app, this would fetch from a local SQLite or Hive database
-  // For the sandbox, we'll simulate "downloaded" content
-  final List<Movie> _downloadedItems = [];
+  List<Movie> _downloadedItems = [];
   bool _isLoading = true;
 
   @override
@@ -24,11 +22,17 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   }
 
   Future<void> _loadDownloads() async {
-    // Simulating local fetch
-    await Future.delayed(const Duration(milliseconds: 800));
+    setState(() => _isLoading = true);
+    final items = await ApiService().getDownloads("contactzerolord@gmail.com");
     setState(() {
+      _downloadedItems = items;
       _isLoading = false;
     });
+  }
+
+  Future<void> _removeDownload(int movieId) async {
+    await ApiService().removeFromDownloads("contactzerolord@gmail.com", movieId);
+    _loadDownloads();
   }
 
   @override
@@ -110,10 +114,23 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             Positioned(
               bottom: 10,
               right: 10,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                child: const Icon(Icons.play_arrow, size: 16, color: Colors.white),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => _removeDownload(movie.id),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                      child: const Icon(Icons.delete, size: 16, color: Colors.redAccent),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                    child: const Icon(Icons.play_arrow, size: 16, color: Colors.white),
+                  ),
+                ],
               ),
             ),
           ],

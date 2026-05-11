@@ -84,7 +84,10 @@ class _DetailsScreenState extends State<DetailsScreen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+              padding: EdgeInsets.symmetric(
+                horizontal: MediaQuery.of(context).size.width > 600 ? 40 : 20,
+                vertical: MediaQuery.of(context).size.width > 600 ? 40 : 20,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -96,118 +99,121 @@ class _DetailsScreenState extends State<DetailsScreen> {
                           color: Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('DETAILS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                        child: const Text('DETAILS', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 2)),
                       ),
                       const SizedBox(width: 20),
                       Text('${movie.year} • ${movie.mediaType.toUpperCase()}', 
-                        style: const TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
                       if (movie.hasAdminOverride == true) ...[
                         const SizedBox(width: 10),
                         const Icon(Icons.verified, color: Colors.blue, size: 14),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
                   Text(
                     movie.displayTitle,
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 72,
-                      fontStyle: FontStyle.italic,
-                      fontWeight: FontWeight.w300,
-                      height: 0.9,
+                    style: GoogleFonts.manrope(
+                      fontSize: MediaQuery.of(context).size.width > 600 ? 52 : 32,
+                      fontWeight: FontWeight.bold,
+                      height: 1.1,
                       color: Colors.white,
+                      letterSpacing: -1,
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30),
                   Wrap(
-                    spacing: 20,
-                    runSpacing: 20,
+                    spacing: 12,
+                    runSpacing: 12,
                     children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                        ),
-                        onPressed: () {
-                          // Record history
-                          ApiService().addToHistory("contactzerolord@gmail.com", movie);
-                          
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VideoPlayerScreen(
-                                movie: movie,
-                                url: movie.videoUrl ?? movie.overrideUrl ?? "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width > 600 ? null : (MediaQuery.of(context).size.width - 52) / 2,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: () {
+                            ApiService().addToHistory("contactzerolord@gmail.com", movie);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => VideoPlayerScreen(
+                                  movie: movie,
+                                  url: movie.videoUrl ?? movie.overrideUrl ?? "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                                ),
                               ),
+                            );
+                          },
+                          child: const Text('PLAY', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1, fontSize: 11)),
+                        ),
+                      ),
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width > 600 ? null : (MediaQuery.of(context).size.width - 52) / 2,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.white30),
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: () {
+                            ApiService().addToWatchlist("contactzerolord@gmail.com", movie);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Added to watchlist'), duration: Duration(seconds: 1))
+                            );
+                          },
+                          child: const Text('+ LIST', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1, fontSize: 11)),
+                        ),
+                      ),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.05),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: const BorderSide(color: Colors.white10),
                             ),
-                          );
-                        },
-                        child: const Text('PLAY FILM', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2)),
-                      ),
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.white30),
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                            elevation: 0,
+                          ),
+                          onPressed: () => _handleDownload(context),
+                          icon: const Icon(Icons.download_for_offline, size: 18),
+                          label: const Text('DOWNLOAD', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1, fontSize: 11)),
                         ),
-                        onPressed: () {
-                          ApiService().addToWatchlist("contactzerolord@gmail.com", movie);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Added to watchlist'), duration: Duration(seconds: 1))
-                          );
-                        },
-                        child: const Text('+ WATCHLIST', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                      ),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                        ),
-                        onPressed: () => _handleDownload(context),
-                        icon: const Icon(Icons.download_for_offline, size: 18),
-                        label: const Text('DOWNLOAD', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2)),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 60),
-                  const Text('OVERVIEW', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.white24)),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 40),
+                  const Text('OVERVIEW', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 2, color: Colors.white24)),
+                  const SizedBox(height: 12),
                   Text(
                     movie.overview ?? '',
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 24,
-                      fontStyle: FontStyle.italic,
+                    style: TextStyle(
+                      fontSize: 15,
                       fontWeight: FontWeight.w300,
                       color: Colors.white70,
-                      height: 1.6,
+                      height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 60),
                   if (movie.recommendations != null && movie.recommendations!.isNotEmpty) ...[
                     _buildSectionHeader('SIMILAR TITLES'),
                     _buildHorizontalList(movie.recommendations!),
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 40),
                   ],
-                  _buildSectionHeader('RECOMMENDED FOR YOU'),
+                  _buildSectionHeader('CURATED SQUAD'),
                   FutureBuilder<List<Movie>>(
                     future: ApiService().getTrending(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const SizedBox(height: 200);
+                      if (!snapshot.hasData) return const SizedBox(height: 180);
                       return _buildHorizontalList(snapshot.data!);
                     }
                   ),
-                  const SizedBox(height: 60),
-                  _buildSectionHeader('NEW RELEASES'),
-                  FutureBuilder<List<Movie>>(
-                    future: ApiService().discover(sortBy: 'release_date.desc'),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const SizedBox(height: 200);
-                      return _buildHorizontalList(snapshot.data!);
-                    }
-                  ),
-                  const SizedBox(height: 100),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
@@ -328,7 +334,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 setDialogState(() => progress += 0.05);
                 return true;
               }
-              Navigator.pop(context);
               return false;
             });
 
@@ -344,6 +349,30 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   Text('${(progress * 100).toInt()}%', style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
                 ],
               ),
+              actions: [
+                if (progress >= 1.0) 
+                   TextButton(
+                     onPressed: () async {
+                       Navigator.pop(context); // Close progress dialog
+                       
+                       final api = ApiService();
+                       String sourceUrl = widget.movie.videoUrl ?? widget.movie.overrideUrl ?? "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+                       String fileName = "${widget.movie.id}_master.mp4";
+                       
+                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Finalizing download...')));
+                       
+                       String? localPath = await api.downloadFile(sourceUrl, fileName);
+                       
+                       if (localPath != null) {
+                           await api.addToDownloads("contactzerolord@gmail.com", widget.movie, localPath: localPath);
+                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Content secured in local vault')));
+                       } else {
+                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Download failed')));
+                       }
+                     },
+                     child: const Text('FINALIZE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                   )
+              ],
             );
           }
         ),

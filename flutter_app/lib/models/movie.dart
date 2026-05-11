@@ -18,6 +18,7 @@ class Movie {
   final bool? hasAdminOverride;
   final List<Movie>? recommendations;
   final bool isDownloaded;
+  final String? localPath;
 
   Movie({
     required this.id,
@@ -37,6 +38,7 @@ class Movie {
     this.hasAdminOverride,
     this.recommendations,
     this.isDownloaded = false,
+    this.localPath,
   });
 
   factory Movie.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,7 @@ class Movie {
       introEnd: json['intro_end'],
       hasAdminOverride: json['has_admin_override'],
       isDownloaded: json['is_downloaded'] ?? false,
+      localPath: json['local_path'],
       recommendations: json['recommendations'] != null && json['recommendations']['results'] != null
         ? (json['recommendations']['results'] as List).map((m) => Movie.fromJson(m)).toList()
         : null,

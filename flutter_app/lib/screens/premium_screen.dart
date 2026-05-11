@@ -3,48 +3,50 @@ import 'package:google_fonts/google_fonts.dart';
 import 'checkout_screen.dart';
 
 class PremiumScreen extends StatelessWidget {
-  const PremiumScreen({super.key});
+  final String userEmail;
+  const PremiumScreen({super.key, required this.userEmail});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0B),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        toolbarHeight: 40,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back, color: Colors.white60, size: 20),
+        ),
+      ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 80),
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.of(context).size.width > 600 ? 40 : 16,
+            vertical: 10,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'PREMIUM',
                 style: GoogleFonts.playfairDisplay(
-                  fontSize: 64,
+                  fontSize: MediaQuery.of(context).size.width > 600 ? 36 : 24,
                   fontStyle: FontStyle.italic,
                   fontWeight: FontWeight.w300,
+                  color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               const Text(
                 'The ultimate cinematic experience, unlocked.',
-                style: TextStyle(color: Colors.white24, letterSpacing: 2),
+                style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 2),
               ),
-              const SizedBox(height: 80),
-              _buildTierCard(
-                context: context,
-                title: 'CINELIST MASTER',
-                price: '9.99',
-                features: [
-                  'Offline Movie Vault',
-                  'High Fidelity 4K Streaming',
-                  'Unlimited Watchlists',
-                  'Archive Access Overrides',
-                  'Priority Curator Support'
-                ],
-                isPopular: true,
-              ),
-              const SizedBox(height: 60),
-              _buildValueProps(),
-              const SizedBox(height: 100),
+              const SizedBox(height: 25),
+              _buildTiers(context),
+              const SizedBox(height: 30),
+              _buildValueProps(context),
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -52,67 +54,106 @@ class PremiumScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildTiers(BuildContext context) {
+    bool isMobile = MediaQuery.of(context).size.width < 900;
+    if (isMobile) {
+      return Column(
+        children: [
+          _buildTierCard(
+            context: context,
+            title: 'CLASSIC MONTHLY',
+            price: '1,500',
+            label: '/ MONTH',
+          ),
+          const SizedBox(height: 15),
+          _buildTierCard(
+            context: context,
+            title: 'IMPERIAL ANNUAL',
+            price: '15,000',
+            label: '/ YEAR',
+            isPopular: true,
+          ),
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _buildTierCard(
+            context: context,
+            title: 'CLASSIC MONTHLY',
+            price: '1,500',
+            label: '/ MONTH',
+          ),
+        ),
+        const SizedBox(width: 30),
+        Expanded(
+          child: _buildTierCard(
+            context: context,
+            title: 'IMPERIAL ANNUAL',
+            price: '15,000',
+            label: '/ YEAR',
+            isPopular: true,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTierCard({
     required BuildContext context,
     required String title,
     required String price,
-    required List<String> features,
+    required String label,
     bool isPopular = false,
   }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(50),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isPopular ? const Color(0xFF1A1A1B) : Colors.transparent,
-        border: Border.all(color: Colors.white12),
-        borderRadius: BorderRadius.circular(8),
+        color: isPopular ? const Color(0xFF161618) : Colors.transparent,
+        border: Border.all(color: isPopular ? Colors.redAccent.withOpacity(0.3) : Colors.white12),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (isPopular)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(4)),
-                child: const Text('MOST CURATED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(4)),
+              child: const Text('BEST VALUE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1)),
             ),
-          Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.white24)),
-          const SizedBox(height: 20),
+          Text(title, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 2, color: Colors.white24)),
+          const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('\$$price', style: GoogleFonts.playfairDisplay(fontSize: 72, fontWeight: FontWeight.w300)),
-              const Text(' / month', style: TextStyle(color: Colors.white24, letterSpacing: 1)),
+              Text('₦$price', style: GoogleFonts.playfairDisplay(fontSize: 28, fontWeight: FontWeight.w300, color: Colors.white)),
+              Text(' $label', style: const TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold)),
             ],
           ),
-          const SizedBox(height: 60),
-          ...features.map((f) => Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: Row(
-              children: [
-                const Icon(Icons.check, color: Colors.redAccent, size: 16),
-                const SizedBox(width: 20),
-                Text(f, style: const TextStyle(color: Colors.white70, fontSize: 16)),
-              ],
-            ),
-          )),
-          const SizedBox(height: 60),
+          const SizedBox(height: 20),
+          _buildFeature('4K ULTRA HDR STREAMING'),
+          _buildFeature('OFFLINE VAULT ACCESS'),
+          _buildFeature('ZERO AD EXPERIENCE'),
+          _buildFeature('PRIORITY SUPPORT'),
+          const SizedBox(height: 25),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 25),
+                backgroundColor: isPopular ? Colors.redAccent : Colors.white,
+                foregroundColor: isPopular ? Colors.white : Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const CheckoutScreen()));
+                Navigator.push(context, MaterialPageRoute(builder: (context) => CheckoutScreen(userEmail: userEmail)));
               },
-              child: const Text('START ASCENSION', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 4)),
+              child: const Text('ASCEND NOW', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 10)),
             ),
           ),
         ],
@@ -120,7 +161,32 @@ class PremiumScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildValueProps() {
+  Widget _buildFeature(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_outline, color: Colors.redAccent, size: 12),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(color: Colors.white54, fontSize: 9, fontWeight: FontWeight.bold))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildValueProps(BuildContext context) {
+    bool isMobile = MediaQuery.of(context).size.width < 600;
+    if (isMobile) {
+      return Column(
+        children: [
+          _buildProp('OFFLINE', 'Take your cinema anywhere. No internet required.', isExpanded: false),
+          const SizedBox(height: 30),
+          _buildProp('QUALITY', 'Stunning 4K resolution at 60 frames per second.', isExpanded: false),
+          const SizedBox(height: 30),
+          _buildProp('ACCESS', 'Early preview of all future archive additions.', isExpanded: false),
+        ],
+      );
+    }
     return Row(
       children: [
         _buildProp('OFFLINE', 'Take your cinema anywhere. No internet required.'),
@@ -132,16 +198,21 @@ class PremiumScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProp(String title, String desc) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.redAccent)),
-          const SizedBox(height: 20),
-          Text(desc, style: const TextStyle(color: Colors.white24, fontSize: 12, height: 1.5)),
-        ],
-      ),
+  Widget _buildProp(String title, String desc, {bool isExpanded = true}) {
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.redAccent)),
+        const SizedBox(height: 12),
+        Text(desc, style: const TextStyle(color: Colors.white24, fontSize: 11, height: 1.4)),
+      ],
     );
+
+    if (isExpanded) {
+      return Expanded(child: content);
+    }
+    return content;
   }
 }
+
