@@ -47,10 +47,10 @@ app.use(express.json());
 
 // MySQL Database Setup with timeout and connection testing
 const pool = mysql.createPool({
-    host: process.env.DB_HOST || "156.232.88.10",
-    user: process.env.DB_USER || "rbydbzln_cinode",
+    host: process.env.DB_HOST || "131.153.147.178",
+    user: process.env.DB_USER || "zerolord_cinode",
     password: process.env.DB_PASSWORD || "@F33rinimicinode",
-    database: process.env.DB_NAME || "rbydbzln_cinode",
+    database: process.env.DB_NAME || "zerolord_cinode",
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
@@ -367,7 +367,11 @@ async function initDB() {
     await fetchSettings();
   } catch (err: any) {
     dbReady = false;
-    dbError = err.message || String(err);
+    let message = err.message || String(err);
+    if (message.includes('ETIMEDOUT')) {
+        message = `Connection Timeout (ETIMEDOUT). This usually means the firewall on ${process.env.DB_HOST || "131.153.147.178"} is blocking Vercel. Please ensure incoming connections from all IPs are allowed.`;
+    }
+    dbError = message;
     console.error("Database initialization failed:", dbError);
   }
 }

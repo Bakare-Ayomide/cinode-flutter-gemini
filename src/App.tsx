@@ -69,6 +69,7 @@ export default function App() {
   const [publicSettings, setPublicSettings] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState<boolean>(true);
+  const [dbErrorMessage, setDbErrorMessage] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
@@ -171,8 +172,12 @@ export default function App() {
       const res = await fetch('/api/health');
       const data = await res.json();
       setDbStatus(data.dbConnected);
+      if (!data.dbConnected) {
+          setDbErrorMessage(data.dbError);
+      }
     } catch (err) {
       setDbStatus(false);
+      setDbErrorMessage("Could not contact system backend. Please verify server is alive.");
     }
   };
 
@@ -374,9 +379,8 @@ export default function App() {
                 <p className="text-sm font-light text-white/60">Enter your credentials to continue the journey.</p>
                 {!dbStatus && (
                   <div className="mt-4 p-3 bg-red-600/10 border border-red-600/20 rounded">
-                    <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest">
-                      Database Connection Timeout (ETIMEDOUT). <br/>
-                      Check firewall settings on 156.232.88.10
+                    <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest leading-relaxed">
+                      {dbErrorMessage || "Database initialization failed."}
                     </p>
                   </div>
                 )}
