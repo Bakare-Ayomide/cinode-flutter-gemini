@@ -43,9 +43,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
             children: [
               Text(
                 'MY COLLECTION',
-                style: GoogleFonts.playfairDisplay(
+                style: GoogleFonts.manrope(
                   fontSize: 72,
-                  fontStyle: FontStyle.italic,
+                  
                   fontWeight: FontWeight.w300,
                   letterSpacing: -4,
                 ),

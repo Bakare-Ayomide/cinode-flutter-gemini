@@ -3,14 +3,44 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
+import fsSync from "fs";
+import { GoogleGenAI } from "@google/genai";
 import axios from "axios";
 import cors from "cors";
 import dotenv from "dotenv";
+import multer from "multer";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
+
+// Multer setup for file storage
+const uploadDir = process.env.VERCEL ? '/tmp/uploads' : 'uploads/';
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
+
+// Ensure uploads directory exists
+async function ensureUploadsDir() {
+    try {
+        await fs.mkdir(uploadDir, { recursive: true });
+    } catch (err) {
+        console.error("Failed to create uploads directory", err);
+    }
+}
+ensureUploadsDir();
+
+// Serve uploads folder
+app.use('/uploads', express.static(uploadDir));
 
 app.use(cors());
 app.use(express.json());
@@ -24,9 +54,12 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    connectTimeout: 20000, // Increased to 20s
+    connectTimeout: 20000, 
     enableKeepAlive: true,
-    keepAliveInitialDelay: 10000
+    keepAliveInitialDelay: 5000,
+    // Add these to handle aggressive server timeouts
+    maxIdle: 5, // Keep some idle connections to speed up requests
+    idleTimeout: 30000 // Close connections after 30s of inactivity to stay under server 60s timeout
 });
 
 let dbReady = false;
@@ -73,9 +106,17 @@ async function initDB() {
             premium_since DATETIME,
             premium_plan VARCHAR(50),
             last_transaction_id VARCHAR(255),
+            settings JSON,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB
     `);
+
+    // Migrating existing users to have a settings column if they don't
+    try {
+        await pool.execute('ALTER TABLE users ADD COLUMN settings JSON AFTER last_transaction_id');
+    } catch (e) {
+        // Column probably already exists
+    }
 
     await pool.execute(`
         CREATE TABLE IF NOT EXISTS system_settings (
@@ -612,7 +653,78 @@ app.get("/api/user/me", ensureDB, async (req, res) => {
   }
 });
 
+app.post("/api/user/settings", ensureDB, async (req, res) => {
+    const email = req.headers["x-user-email"];
+    const { settings } = req.body;
+    if (!email) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+        await pool.execute('UPDATE users SET settings = ? WHERE email = ?', [JSON.stringify(settings), email]);
+        res.json({ success: true });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Payments & Checkout
+app.post("/api/checkout/upload-proof", ensureDB, upload.single('proof'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: "No proof image uploaded" });
+    }
+    const proof_image_url = `/uploads/${path.basename(req.file.path)}`;
+    res.json({ success: true, url: proof_image_url });
+});
+
+app.post("/api/checkout/extract-info", ensureDB, async (req, res) => {
+    const { image_url } = req.body;
+    if (!image_url) return res.status(400).json({ error: "No image URL provided" });
+
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+
+        const ai = new GoogleGenAI({ apiKey });
+        
+        // We need the physical path to read the file for Gemini
+        // image_url starts with /uploads/
+        const filename = path.basename(image_url);
+        // The upload folder is 'uploads' in cwd
+        const filePath = path.join(process.cwd(), 'uploads', filename);
+
+        if (!fsSync.existsSync(filePath)) {
+            return res.status(404).json({ error: "Image file not found locally" });
+        }
+
+        const imageData = fsSync.readFileSync(filePath);
+        const base64Data = imageData.toString('base64');
+
+        const result = await ai.models.generateContent({
+            model: "gemini-1.5-flash",
+            contents: [
+                {
+                    parts: [
+                        { inlineData: { data: base64Data, mimeType: "image/jpeg" } },
+                        { text: "Extract the transaction reference ID, sender name, and amount from this payment receipt. Return as JSON: { \"reference\": string, \"name\": string, \"amount\": number }. Only return JSON." }
+                    ]
+                }
+            ]
+        });
+
+        const text = result.text || "";
+        const cleanText = text.replace(/```json|```/g, '').trim();
+        const data = JSON.parse(cleanText);
+        
+        res.json(data);
+    } catch (err: any) {
+        console.error("AI Extraction Error:", err);
+        res.status(500).json({ error: `Extraction failed: ${err.message}` });
+    }
+});
+
+// Serve uploads folder
+// This was moved up or handled by the express.static call near ensureUploadsDir
+// app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 app.get("/api/checkout/config", async (req, res) => {
     const fallback = {
         bank_name: "Cinode Master Bank",
@@ -1287,7 +1399,7 @@ app.post("/api/admin/users/grant-premium", ensureDB, adminOnly, async (req, res)
 app.post("/api/admin/users/revoke-premium", ensureDB, adminOnly, async (req, res) => {
     const { email } = req.body;
     try {
-        await pool.execute('UPDATE users SET is_premium = 0, premium_expiry = NULL WHERE email = ?', [email]);
+        await pool.execute('UPDATE users SET is_premium = 0, premium_since = NULL, premium_plan = NULL WHERE email = ?', [email]);
         await pool.execute('DELETE FROM subscriptions WHERE user_email = ?', [email]);
         
         // Notify user
@@ -1399,18 +1511,21 @@ async function startServer() {
         console.log("Retrying DB connection...");
         await initDB();
     } else {
-        // Just test if it's still alive
+        // Just test if it's still alive using a lightweight query
         try {
-            const conn = await pool.getConnection();
-            conn.release();
+            await pool.query('SELECT 1');
             dbError = null;
+            dbReady = true;
         } catch (err: any) {
             console.error("DB sanity check failed:", err.message);
-            dbReady = false;
-            dbError = err.message;
+            // Only mark as down if it's a connection error, not a query error
+            if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNREFUSED' || err.fatal) {
+                dbReady = false;
+                dbError = err.message;
+            }
         }
     }
-  }, 30000); // Check every 30s
+  }, 15000); // Check every 15s for better responsiveness
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -1431,4 +1546,12 @@ async function startServer() {
   });
 }
 
-startServer();
+export default app;
+
+// Only start the server if this file is run directly
+if (process.env.NODE_ENV !== "test" && import.meta.url === `file://${process.argv[1]}`) {
+  startServer();
+} else if (process.env.VERCEL) {
+    // On Vercel, we need to initialize the DB but not call listen
+    initDB();
+}

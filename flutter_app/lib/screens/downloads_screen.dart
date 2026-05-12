@@ -45,16 +45,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           const SizedBox(height: 60),
           Text(
             'OFFLINE VAULT',
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.manrope(
               fontSize: 64,
-              fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -2,
             ),
           ),
-          const SizedBox(height: 20),
-          const Text(
-            'Your curated library available anywhere, anytime.',
-            style: TextStyle(color: Colors.white24, letterSpacing: 1),
+          const SizedBox(height: 10),
+          Text(
+            'Your curated library available anywhere, anytime.'.toUpperCase(),
+            style: const TextStyle(color: Colors.white24, letterSpacing: 2, fontSize: 10, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 60),
           Expanded(

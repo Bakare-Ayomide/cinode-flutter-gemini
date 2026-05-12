@@ -96,10 +96,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.redAccent.withOpacity(0.1),
+                          border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('DETAILS', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                        child: const Text('DETAILS', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 2, color: Colors.redAccent)),
                       ),
                       const SizedBox(width: 20),
                       Text('${movie.year} • ${movie.mediaType.toUpperCase()}', 
@@ -130,10 +131,12 @@ class _DetailsScreenState extends State<DetailsScreen> {
                         width: MediaQuery.of(context).size.width > 600 ? null : (MediaQuery.of(context).size.width - 52) / 2,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            elevation: 8,
+                            shadowColor: Colors.redAccent.withOpacity(0.5),
                           ),
                           onPressed: () {
                             ApiService().addToHistory("contactzerolord@gmail.com", movie);
@@ -278,7 +281,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
           context: context,
           builder: (context) => AlertDialog(
             backgroundColor: const Color(0xFF1A1A1B),
-            title: Text('Premium Feature', style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 32, fontStyle: FontStyle.italic)),
+            title: Text('Premium Feature', style: GoogleFonts.manrope(color: Colors.white, fontSize: 32, )),
             content: const Text('Offline downloads are reserved for premium members. Upgrade now to watch your favorites anywhere.', style: TextStyle(color: Colors.white70, height: 1.5)),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context), child: const Text('MAYBE LATER', style: TextStyle(color: Colors.white24, letterSpacing: 2))),
@@ -304,7 +307,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1B),
-        title: Text('Secure Content', style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 32, fontStyle: FontStyle.italic)),
+        title: Text('Secure Content', style: GoogleFonts.manrope(color: Colors.white, fontSize: 32, )),
         content: Text('Download "${widget.movie.displayTitle}" to your local vault for offline viewing?', style: const TextStyle(color: Colors.white70, height: 1.5)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL', style: TextStyle(color: Colors.white24))),
@@ -342,7 +345,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('SECURING CONTENT', style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 24, fontStyle: FontStyle.italic)),
+                  Text('SECURING CONTENT', style: GoogleFonts.manrope(color: Colors.white, fontSize: 24, )),
                   const SizedBox(height: 30),
                   LinearProgressIndicator(value: progress, backgroundColor: Colors.white10, color: Colors.redAccent),
                   const SizedBox(height: 10),

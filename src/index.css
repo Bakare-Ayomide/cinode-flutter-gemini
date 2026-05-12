@@ -6,11 +6,9 @@
   --font-serif: "Manrope", ui-serif, Georgia, serif;
 }
 
-@variant dark (&:where(.dark, .dark *));
-
 @layer base {
   body {
-    @apply bg-white text-gray-900 dark:bg-[#0A0A0B] dark:text-[#E5E5E5] antialiased;
+    @apply bg-[#0A0A0B] text-[#E5E5E5] antialiased;
   }
 }
 

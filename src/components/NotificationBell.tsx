@@ -65,7 +65,7 @@ export const NotificationBell: React.FC = () => {
     <div className="relative">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+        className="relative p-2 rounded-full hover:bg-white/10 transition-colors"
       >
         <Bell size={24} className={unreadCount > 0 ? "text-red-500" : "text-gray-400"} />
         {unreadCount > 0 && (
@@ -89,12 +89,12 @@ export const NotificationBell: React.FC = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-white dark:bg-[#121214] border border-gray-200 dark:border-white/5 rounded-3xl shadow-2xl z-[101] overflow-hidden"
+              className="relative w-full max-w-sm bg-[#121214] border border-gray-200 border-white/5 rounded-3xl shadow-2xl z-[101] overflow-hidden"
             >
-              <div className="p-5 border-b border-gray-100 dark:border-white/5 flex items-center justify-between bg-gray-50 dark:bg-white/[0.03]">
+              <div className="p-5 border-b border-white/5 flex items-center justify-between bg-white/[0.03]">
                 <div>
-                  <h3 className="font-black text-xs uppercase tracking-[0.25em] italic font-serif text-gray-900 dark:text-white/90">Archive Terminal</h3>
-                  <p className="text-[7px] text-gray-400 dark:text-white/20 font-black uppercase tracking-[0.3em] mt-0.5">{unreadCount} UNREAD ENTRIES</p>
+                  <h3 className="font-black text-xs uppercase tracking-[0.25em] italic font-serif text-white/90">Archive Terminal</h3>
+                  <p className="text-[7px] text-white/20 font-black uppercase tracking-[0.3em] mt-0.5">{unreadCount} UNREAD ENTRIES</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {unreadCount > 0 && (
@@ -107,17 +107,17 @@ export const NotificationBell: React.FC = () => {
                   )}
                   <button 
                     onClick={() => setIsOpen(false)}
-                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-300 dark:text-white/20 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    className="p-1.5 hover:bg-white/10 rounded-lg text-white/20 hover:text-white transition-colors"
                   >
                     <X size={16} />
                   </button>
                 </div>
               </div>
-              <div className="max-h-[50vh] overflow-y-auto no-scrollbar bg-white dark:bg-[#0D0D0F]">
+              <div className="max-h-[50vh] overflow-y-auto no-scrollbar bg-[#0D0D0F]">
                 {notifications.length === 0 ? (
                   <div className="p-16 text-center space-y-4">
-                    <div className="w-14 h-14 bg-gray-50 dark:bg-white/[0.02] rounded-full flex items-center justify-center mx-auto border border-gray-100 dark:border-white/5">
-                      <Bell size={24} className="text-gray-300 dark:text-white/10" />
+                    <div className="w-14 h-14 bg-white/[0.02] rounded-full flex items-center justify-center mx-auto border border-white/5">
+                      <Bell size={24} className="text-white/10" />
                     </div>
                     <div className="space-y-1">
                       <p className="text-[9px] uppercase font-black tracking-[0.3em] text-white/20 leading-tight">Zero Activity</p>
@@ -128,26 +128,26 @@ export const NotificationBell: React.FC = () => {
                   notifications.map(notif => (
                     <div 
                       key={notif.id}
-                      className={`p-5 border-b border-gray-50 dark:border-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-all cursor-pointer relative group ${!notif.is_read ? 'bg-gray-50/50 dark:bg-white/[0.02]' : ''}`}
+                      className={`p-5 border-b border-white/[0.02] hover:bg-white/[0.03] transition-all cursor-pointer relative group ${!notif.is_read ? 'bg-white/[0.02]' : ''}`}
                       onClick={() => markAsRead(notif.id)}
                     >
                       {!notif.is_read && (
                         <div className="absolute top-6 right-5 w-1 h-1 bg-red-600 rounded-full shadow-[0_0_12px_rgba(220,38,38,0.8)]" />
                       )}
                       <div className="flex gap-4">
-                        <div className={`mt-0.5 p-2 rounded-xl border border-gray-100 dark:border-white/5 transition-colors ${!notif.is_read ? 'bg-red-600/10 border-red-500/20' : 'bg-gray-50 dark:bg-white/5'}`}>
+                        <div className={`mt-0.5 p-2 rounded-xl border border-white/5 transition-colors ${!notif.is_read ? 'bg-red-600/10 border-red-500/20' : 'bg-white/5'}`}>
                           {getTypeIcon(notif.type)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-[11px] font-black leading-tight uppercase tracking-wide transition-colors ${!notif.is_read ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-white/30'}`}>
+                          <p className={`text-[11px] font-black leading-tight uppercase tracking-wide transition-colors ${!notif.is_read ? 'text-white' : 'text-white/30'}`}>
                             {notif.title}
                           </p>
-                          <p className="text-[10px] text-gray-500 dark:text-white/20 mt-1.5 leading-relaxed font-medium">
+                          <p className="text-[10px] text-white/20 mt-1.5 leading-relaxed font-medium">
                             {notif.message}
                           </p>
                           <div className="flex items-center gap-2 mt-3">
-                            <span className="w-4 h-[1px] bg-gray-200 dark:bg-white/10"></span>
-                            <p className="text-[7px] text-gray-300 dark:text-white/10 font-black uppercase tracking-widest">
+                            <span className="w-4 h-[1px] bg-white/10"></span>
+                            <p className="text-[7px] text-white/10 font-black uppercase tracking-widest">
                                 {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(notif.created_at).toLocaleDateString()}
                             </p>
                           </div>
@@ -157,10 +157,10 @@ export const NotificationBell: React.FC = () => {
                   ))
                 )}
               </div>
-              <div className="p-4 bg-gray-50 dark:bg-white/[0.03] border-t border-gray-100 dark:border-white/5 text-center">
+              <div className="p-4 bg-white/[0.03] border-t border-white/5 text-center">
                   <button 
                     onClick={() => setIsOpen(false)}
-                    className="w-full py-2 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/5 rounded-xl text-[8px] font-black uppercase tracking-[0.4em] text-gray-400 dark:text-white/30 hover:text-gray-900 dark:hover:text-white transition-all active:scale-95"
+                    className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[8px] font-black uppercase tracking-[0.4em] text-white/30 hover:text-white transition-all active:scale-95"
                   >Dismiss System Log</button>
               </div>
             </motion.div>

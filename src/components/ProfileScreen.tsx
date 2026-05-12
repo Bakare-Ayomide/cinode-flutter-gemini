@@ -7,12 +7,23 @@ const ProfileScreen: React.FC<{ userEmail: string; onUpgrade: () => void; onLogo
   const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeDetail, setActiveDetail] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [settings, setSettings] = useState<any>({
+    Notifications: { enabled: true, advanced: false },
+    Privacy: { enabled: true, advanced: false },
+    Playback: { enabled: true, advanced: false },
+    Audio: { enabled: true, advanced: false },
+    Support: { enabled: true, advanced: false }
+  });
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const data = await movieApi.getUserMe();
         setUserData(data);
+        if (data.settings) {
+          setSettings((prev: any) => ({ ...prev, ...data.settings }));
+        }
       } catch (err) {
         console.error('Failed to fetch user', err);
       } finally {
@@ -21,6 +32,28 @@ const ProfileScreen: React.FC<{ userEmail: string; onUpgrade: () => void; onLogo
     };
     fetchUser();
   }, []);
+
+  const handleSaveSettings = async () => {
+    setIsSaving(true);
+    try {
+      await movieApi.updateUserSettings(settings);
+      setActiveDetail(null);
+    } catch (err) {
+      console.error('Failed to save settings', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const toggleSetting = (category: string, field: string) => {
+    setSettings((prev: any) => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [field]: !prev[category][field]
+      }
+    }));
+  };
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-[60vh]">
@@ -73,26 +106,33 @@ const ProfileScreen: React.FC<{ userEmail: string; onUpgrade: () => void; onLogo
                         <p className="text-sm font-medium text-white/80">Enable {activeDetail} Engine</p>
                         <p className="text-[10px] text-white/30 mt-1">Activate system-level optimization</p>
                     </div>
-                    <div className="w-12 h-6 bg-red-600 rounded-full relative">
-                        <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
-                    </div>
+                    <button 
+                      onClick={() => activeDetail && toggleSetting(activeDetail, 'enabled')}
+                      className={`w-12 h-6 rounded-full relative transition-colors ${activeDetail && settings[activeDetail]?.enabled ? 'bg-red-600' : 'bg-white/10'}`}
+                    >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${activeDetail && settings[activeDetail]?.enabled ? 'right-1' : 'left-1'}`} />
+                    </button>
                 </div>
                 <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between">
                     <div>
                         <p className="text-sm font-medium text-white/80">Advanced Mode</p>
                         <p className="text-[10px] text-white/30 mt-1">Unlock scrupulous overrides</p>
                     </div>
-                    <div className="w-12 h-6 bg-white/10 rounded-full relative">
-                        <div className="absolute left-1 top-1 w-4 h-4 bg-white/20 rounded-full" />
-                    </div>
+                    <button 
+                      onClick={() => activeDetail && toggleSetting(activeDetail, 'advanced')}
+                      className={`w-12 h-6 rounded-full relative transition-colors ${activeDetail && settings[activeDetail]?.advanced ? 'bg-red-600' : 'bg-white/10'}`}
+                    >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${activeDetail && settings[activeDetail]?.advanced ? 'right-1' : 'left-1'}`} />
+                    </button>
                 </div>
               </div>
 
               <button 
-                onClick={() => setActiveDetail(null)}
-                className="w-full py-4 bg-white text-black font-bold uppercase tracking-widest text-[10px] rounded-xl hover:scale-105 transition-all"
+                onClick={handleSaveSettings}
+                disabled={isSaving}
+                className="w-full py-4 bg-white text-black font-bold uppercase tracking-widest text-[10px] rounded-xl hover:scale-105 transition-all disabled:opacity-50"
               >
-                Sync Changes
+                {isSaving ? 'Synchronizing...' : 'Sync Changes'}
               </button>
             </motion.div>
           </motion.div>
@@ -138,39 +178,39 @@ const ProfileScreen: React.FC<{ userEmail: string; onUpgrade: () => void; onLogo
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
         <div className="space-y-6 md:space-y-8">
-           <h3 className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400 dark:text-white/20">Preferences</h3>
+           <h3 className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-white/20">Preferences</h3>
            <div className="space-y-3 md:space-y-4">
               {preferences.map((item, idx) => (
                 <button 
                   key={idx} 
                   onClick={() => setActiveDetail(item.label)}
-                  className="w-full flex items-center justify-between p-4 md:p-5 bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/5 rounded-xl md:rounded-2xl hover:bg-gray-100 dark:hover:bg-white/[0.05] transition-all group"
+                  className="w-full flex items-center justify-between p-4 md:p-5 bg-white/[0.02] border border-white/5 rounded-xl md:rounded-2xl hover:bg-white/[0.05] transition-all group"
                 >
-                   <div className="flex items-center gap-3 md:gap-4 text-gray-600 dark:text-white/60 group-hover:text-gray-900 group-hover:dark:text-white transition-colors">
+                   <div className="flex items-center gap-3 md:gap-4 text-gray-600 text-white/60 group-hover:text-gray-900 group-hover:text-white transition-colors">
                       {item.icon}
                       <div className="text-left">
                         <span className="block text-xs md:text-sm font-medium">{item.label}</span>
-                        <span className="block text-[8px] md:text-[10px] text-gray-400 dark:text-white/20 group-hover:text-gray-500 group-hover:dark:text-white/40 transition-colors uppercase tracking-widest">{item.desc}</span>
+                        <span className="block text-[8px] md:text-[10px] text-white/20 group-hover:text-gray-500 group-hover:text-white/40 transition-colors uppercase tracking-widest">{item.desc}</span>
                       </div>
                    </div>
-                   <ChevronRight size={14} className="text-gray-300 dark:text-white/10 group-hover:text-gray-500 group-hover:dark:text-white/40 translate-x-0 group-hover:translate-x-1 transition-all md:w-4 md:h-4" />
+                   <ChevronRight size={14} className="text-gray-300 text-white/10 group-hover:text-gray-500 group-hover:text-white/40 translate-x-0 group-hover:translate-x-1 transition-all md:w-4 md:h-4" />
                 </button>
               ))}
            </div>
         </div>
 
         <div className="space-y-6 md:space-y-8">
-           <h3 className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400 dark:text-white/20">System</h3>
+           <h3 className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-white/20">System</h3>
            <div className="space-y-3 md:space-y-4">
               <div className="p-6 md:p-8 bg-gradient-to-br from-red-600/10 to-transparent border border-red-600/20 rounded-2xl md:rounded-3xl space-y-4 md:space-y-6">
                  <div className="space-y-1 md:space-y-2">
                     <p className="text-red-500 text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Cinema License</p>
-                    <h4 className="text-lg md:text-xl font-serif font-medium text-gray-900 dark:text-white">Cinode Ultimate</h4>
-                    <p className="text-[10px] md:text-xs text-gray-500 dark:text-white/40 leading-relaxed max-w-[240px] md:max-w-none">Your license grants access to 4K Master Streams, Unlimited Vault Storage, and Priority CDN access.</p>
+                    <h4 className="text-lg md:text-xl font-serif font-medium text-white">Cinode Ultimate</h4>
+                    <p className="text-[10px] md:text-xs text-white/40 leading-relaxed max-w-[240px] md:max-w-none">Your license grants access to 4K Master Streams, Unlimited Vault Storage, and Priority CDN access.</p>
                  </div>
                  <button 
                     onClick={onUpgrade}
-                    className="w-full py-3 md:py-4 bg-gray-900 dark:bg-white text-white dark:text-black text-[8px] md:text-[10px] font-bold uppercase tracking-widest rounded-lg md:rounded-xl hover:scale-105 transition-all"
+                    className="w-full py-3 md:py-4 bg-red-600 text-white text-[8px] md:text-[10px] font-bold uppercase tracking-widest rounded-lg md:rounded-xl hover:bg-white hover:text-black transition-all shadow-lg shadow-red-600/20"
                  >
                     Manage Subscription
                  </button>

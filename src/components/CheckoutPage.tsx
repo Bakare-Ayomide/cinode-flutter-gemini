@@ -12,11 +12,14 @@ import {
   ExternalLink,
   ChevronLeft,
   AlertCircle,
-  Info
+  Info,
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { movieApi, setAuthEmail } from '../lib/api';
 import { PaymentConfig } from '../types';
+import { GoogleGenAI } from "@google/genai";
 
 interface CheckoutPageProps {
   user: any;
@@ -37,11 +40,53 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialP
     transaction_reference: '',
     referral_code: '',
     tracking_answers: {} as any,
-    proof_image_url: ''
   });
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
 
   const price = plan === 'monthly' ? 1500 : 15000;
   const planLabel = plan === 'monthly' ? 'Monthly' : 'Yearly';
+
+  const extractPaymentInfo = async (imageUrl: string) => {
+    setIsAiProcessing(true);
+    try {
+        const data = await movieApi.extractInfo(imageUrl);
+        setFormData(prev => ({
+            ...prev,
+            transaction_reference: data.reference || prev.transaction_reference,
+            sender_name: data.name || prev.sender_name
+        }));
+        console.log("Server AI Extracted Data:", data);
+    } catch (err) {
+        console.error("AI Extraction failed:", err);
+    } finally {
+        setIsAiProcessing(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        setProofFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
+        
+        // Upload first to get URL, then extract
+        setIsAiProcessing(true);
+        try {
+            const fd = new FormData();
+            fd.append('proof', file);
+            const uploadResult = await movieApi.uploadProof(fd);
+            if (uploadResult.url) {
+                await extractPaymentInfo(uploadResult.url);
+            }
+        } catch (err) {
+            console.error("Preliminary upload failed:", err);
+        } finally {
+            setIsAiProcessing(false);
+        }
+    }
+  };
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -94,17 +139,28 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!proofFile) {
+        alert("Please upload a proof of payment screenshot");
+        return;
+    }
     setSubmitting(true);
     try {
+      const fd = new FormData();
+      fd.append('proof', proofFile);
+      
+      const uploadResult = await movieApi.uploadProof(fd);
+      
       await movieApi.submitCheckout({
         user_email: user.email,
         plan,
         amount: price,
-        ...formData
+        ...formData,
+        proof_image_url: uploadResult.url
       });
+      
       setStep(3); // Success step
     } catch (err: any) {
-      alert(err.message || "Failed to submit payment proof. Please check your connection.");
+      alert(err.message || "Failed to verify or submit payment. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -218,7 +274,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialP
                 </button>
                 <button 
                   onClick={onBack}
-                  className="w-full py-3 hover:bg-gray-100 dark:hover:bg-white/5 text-gray-400 dark:text-white/20 font-black uppercase tracking-widest text-[8px] rounded-xl transition-all"
+                  className="w-full py-3 hover:bg-gray-100 hover:bg-white/5 text-white/20 font-black uppercase tracking-widest text-[8px] rounded-xl transition-all"
                 >
                   Return to Dashboard
                 </button>
@@ -233,7 +289,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialP
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               className="space-y-4 pb-6"
-                         <div className="flex items-center gap-3 mb-2">
+            >
+              <div className="flex items-center gap-3 mb-2">
                 <button onClick={() => setStep(1)} className="p-2 hover:bg-white/10 rounded-xl transition-all text-white">
                   <ChevronLeft size={20} />
                 </button>
@@ -321,20 +378,39 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialP
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[7px] text-white/20 uppercase tracking-[0.3em] font-black ml-1">Proof URL</label>
+                      <label className="text-[7px] text-white/20 uppercase tracking-[0.3em] font-black ml-1">Payment Proof</label>
                       <div className="relative">
-                        <input 
-                          required type="url" value={formData.proof_image_url}
-                          onChange={e => setFormData({ ...formData, proof_image_url: e.target.value })}
-                          placeholder="PASTE LINK"
-                          className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2.5 text-[9px] focus:border-red-600 focus:outline-none transition-all pr-8 text-white"
-                        />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20">
-                          <Upload size={10} />
-                        </div>
+                        <label className="flex flex-col items-center justify-center w-full min-h-[40px] bg-white/[0.02] border border-dashed border-white/10 rounded-xl cursor-pointer hover:border-red-600/50 transition-all group overflow-hidden relative">
+                          {previewUrl ? (
+                            <>
+                                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover max-h-[80px]" />
+                                {isAiProcessing && (
+                                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center backdrop-blur-sm">
+                                        <Loader2 size={16} className="text-red-500 animate-spin mb-1" />
+                                        <div className="flex items-center gap-1">
+                                            <Sparkles size={8} className="text-red-400 animate-pulse" />
+                                            <span className="text-[6px] font-black uppercase text-red-400 tracking-widest">AI Scanning...</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                          ) : (
+                            <div className="flex flex-col items-center py-2">
+                                <Upload size={12} className="text-white/20 mb-1 group-hover:text-red-500 transition-colors" />
+                                <span className="text-[6px] font-black uppercase text-white/20">Upload Screenshot</span>
+                            </div>
+                          )}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleFileChange}
+                            className="hidden" 
+                          />
+                        </label>
                       </div>
                     </div>
-                  </div>  </div>
+                  </div>
+                </div>
 
                   <button 
                     disabled={submitting}
@@ -342,7 +418,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialP
                   >
                     {submitting ? 'Authenticating...' : 'Confirm Payment'}
                   </button>
-                </div>
               </form>
             </motion.div>
           )}

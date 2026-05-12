@@ -93,7 +93,7 @@ class _AffiliateDashboardScreenState extends State<AffiliateDashboardScreen> {
                         children: [
                           Text('WELCOME,', style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold)),
                           Text(widget.userEmail.split('@')[0].toUpperCase(), 
-                            style: GoogleFonts.playfairDisplay(fontSize: 32, fontStyle: FontStyle.italic, color: Colors.white)),
+                            style: GoogleFonts.manrope(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -1)),
                         ],
                       ),
                       _buildReferralBadge(affiliate['referral_code']),

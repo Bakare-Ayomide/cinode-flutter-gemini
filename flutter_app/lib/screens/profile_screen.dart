@@ -16,6 +16,14 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
+  bool _isSaving = false;
+  Map<String, dynamic> _settings = {
+    'Notifications': {'enabled': true, 'advanced': false},
+    'Privacy': {'enabled': true, 'advanced': false},
+    'Playback': {'enabled': true, 'advanced': false},
+    'Audio': {'enabled': true, 'advanced': false},
+    'Support': {'enabled': true, 'advanced': false},
+  };
 
   @override
   void initState() {
@@ -29,8 +37,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       setState(() {
         _userData = data;
+        if (data?['settings'] != null) {
+          _settings = Map<String, dynamic>.from(data!['settings']);
+        }
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    setState(() => _isSaving = true);
+    try {
+      final api = ApiService();
+      await api.updateUserSettings(widget.userEmail, _settings);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      print('Save settings error: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -51,7 +75,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'THE IDENTITY',
+            'ACCOUNT INTELLIGENCE',
+            style: GoogleFonts.manrope(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 4,
+              color: Colors.white24,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'THE IDENTITY'.toUpperCase(),
             style: GoogleFonts.manrope(
               fontSize: MediaQuery.of(context).size.width > 600 ? 48 : 32,
               fontWeight: FontWeight.bold,
@@ -99,7 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               border: Border.all(color: isPremium ? Colors.yellow.withOpacity(0.2) : Colors.transparent),
                             ),
                             child: Text(
-                              isPremium ? 'PREMIUM ARCHIVE' : 'FREE ACCESS',
+                              isPremium ? 'CINODE ULTIMATE' : 'FREE ACCESS',
                               style: TextStyle(
                                 fontSize: 8,
                                 fontWeight: FontWeight.bold,
@@ -129,21 +163,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.redAccent.withOpacity(0.1), Colors.transparent],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.redAccent.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.redAccent.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(color: Colors.redAccent.withOpacity(0.05), blurRadius: 20, spreadRadius: 5),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('UNLIMITED CINEMA', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 2, color: Colors.redAccent)),
+          const Text('CINODE ULTIMATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 2, color: Colors.redAccent)),
           const SizedBox(height: 12),
           Text(
-            'Upgrade for offline downloads and 4K streaming.',
+            'Elevate your experience with 4K Master Streams.',
             style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white),
           ),
           const SizedBox(height: 24),
@@ -151,15 +184,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
               ),
               onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => CheckoutScreen(userEmail: widget.userEmail)));
               },
-              child: const Text('UPGRADE NOW', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1, fontSize: 12)),
+              child: const Text('MANAGE SUBSCRIPTION', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1, fontSize: 12)),
             ),
           ),
         ],
@@ -171,55 +205,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF0D0D0E),
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(title.toUpperCase(), style: GoogleFonts.playfairDisplay(fontSize: 24, fontStyle: FontStyle.italic)),
-                IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Colors.white24)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            const Text('CONFIGURATION MODULE', style: TextStyle(fontSize: 8, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 40),
-            _buildDetailToggle('ENABLE ENGINE', 'Activate system-level optimization', true),
-            const SizedBox(height: 20),
-            _buildDetailToggle('ADVANCED MODE', 'Unlock scrupulous overrides', false),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-                onPressed: () => Navigator.pop(context),
-                child: const Text('SYNC CHANGES', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 10)),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: const EdgeInsets.all(30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(title.toUpperCase(), style: GoogleFonts.manrope(fontSize: 24, fontWeight: FontWeight.bold)),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Colors.white24)),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 10),
+              const Text('CONFIGURATION MODULE', style: TextStyle(fontSize: 8, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 40),
+              _buildDetailToggle(
+                'ENABLE ${title.toUpperCase()} ENGINE', 
+                'Activate system-level optimization', 
+                _settings[title]?['enabled'] ?? true,
+                (v) {
+                  setState(() => _settings[title]['enabled'] = v);
+                  setModalState(() {});
+                }
+              ),
+              const SizedBox(height: 20),
+              _buildDetailToggle(
+                'ADVANCED MODE', 
+                'Unlock scrupulous overrides', 
+                _settings[title]?['advanced'] ?? false,
+                (v) {
+                  setState(() => _settings[title]['advanced'] = v);
+                  setModalState(() {});
+                }
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white, 
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isSaving ? null : _saveSettings,
+                  child: Text(
+                    _isSaving ? 'SYNCHRONIZING...' : 'SYNC CHANGES', 
+                    style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 10)
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDetailToggle(String title, String desc, bool active) {
+  Widget _buildDetailToggle(String title, String desc, bool active, ValueChanged<bool> onChanged) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
-            const SizedBox(height: 4),
-            Text(desc, style: const TextStyle(fontSize: 9, color: Colors.white24)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+              const SizedBox(height: 4),
+              Text(desc, style: const TextStyle(fontSize: 9, color: Colors.white24)),
+            ],
+          ),
         ),
-        Switch(value: active, onChanged: (v) {}, activeColor: Colors.redAccent),
+        Switch(
+          value: active, 
+          onChanged: onChanged, 
+          activeColor: Colors.redAccent,
+          trackColor: MaterialStateProperty.all(Colors.white10),
+        ),
       ],
     );
   }

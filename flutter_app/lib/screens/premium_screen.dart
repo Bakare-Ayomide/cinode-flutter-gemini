@@ -29,18 +29,18 @@ class PremiumScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'PREMIUM',
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: MediaQuery.of(context).size.width > 600 ? 36 : 24,
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w300,
+                'CINODE ULTIMATE',
+                style: GoogleFonts.manrope(
+                  fontSize: MediaQuery.of(context).size.width > 600 ? 32 : 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1,
                   color: Colors.white,
                 ),
               ),
               const SizedBox(height: 12),
               const Text(
-                'The ultimate cinematic experience, unlocked.',
-                style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 2),
+                'UNLIMITED ARCHIVE ACCESS. MASTER STREAMS. ZERO LIMITS.',
+                style: TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 2, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 25),
               _buildTiers(context),
@@ -131,7 +131,7 @@ class PremiumScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('₦$price', style: GoogleFonts.playfairDisplay(fontSize: 28, fontWeight: FontWeight.w300, color: Colors.white)),
+              Text('₦$price', style: GoogleFonts.manrope(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -1)),
               Text(' $label', style: const TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold)),
             ],
           ),
@@ -153,7 +153,7 @@ class PremiumScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => CheckoutScreen(userEmail: userEmail)));
               },
-              child: const Text('ASCEND NOW', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 10)),
+              child: const Text('PURCHASE ACCESS', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 10)),
             ),
           ),
         ],

@@ -106,7 +106,7 @@ export const AdPlacement: React.FC<AdPlacementProps> = ({
         </button>
       )}
       
-      <div className="relative overflow-hidden rounded-xl border border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-white/[0.02]">
+      <div className="relative overflow-hidden rounded-xl border border-white/5 bg-white/[0.02]">
         {renderContent()}
         <div className="absolute bottom-2 right-2 flex items-center gap-2">
             <span className="px-1.5 py-0.5 bg-black/60 backdrop-blur-md border border-white/10 rounded text-[9px] uppercase font-black tracking-wider text-white">

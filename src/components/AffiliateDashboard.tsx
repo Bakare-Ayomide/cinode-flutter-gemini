@@ -118,7 +118,7 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className="bg-gray-50 dark:bg-[#161618] p-6 rounded-3xl border border-gray-200 dark:border-white/5"
+              className="bg-gray-50 bg-[#161618] p-6 rounded-3xl border border-gray-200 border-white/5"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className={`p-2 bg-${stat.color}-500/10 rounded-xl`}>
@@ -126,13 +126,13 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                 </div>
               </div>
               <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black mb-1">{stat.label}</p>
-              <p className="text-2xl font-black text-gray-900 dark:text-white">{stat.value}</p>
+              <p className="text-2xl font-black text-white">{stat.value}</p>
             </motion.div>
           ))}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 p-1.5 bg-gray-100 dark:bg-[#161618] rounded-2xl w-fit mb-8 border border-gray-200 dark:border-white/5">
+        <div className="flex gap-4 p-1.5 bg-gray-100 bg-[#161618] rounded-2xl w-fit mb-8 border border-gray-200 border-white/5">
             {[
                 { id: 'overview', label: 'Overview', icon: TrendingUp },
                 { id: 'referrals', label: 'Referrals', icon: Users },
@@ -142,7 +142,7 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        activeTab === tab.id ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                        activeTab === tab.id ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-900 hover:text-white'
                     }`}
                 >
                     <tab.icon size={16} />
@@ -158,9 +158,9 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                    initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
                    className="space-y-8"
                 >
-                    <div className="bg-gray-50 dark:bg-[#161618] rounded-3xl border border-gray-200 dark:border-white/5 p-8">
+                    <div className="bg-gray-50 bg-[#161618] rounded-3xl border border-gray-200 border-white/5 p-8">
                         <div className="flex items-center justify-between mb-8">
-                            <h3 className="font-bold text-lg text-gray-900 dark:text-white">Partner Program Strategy</h3>
+                            <h3 className="font-bold text-lg text-white">Partner Program Strategy</h3>
                             <span className="text-xs text-red-500 font-bold uppercase tracking-widest">Earning Rules</span>
                         </div>
                         <div className="grid md:grid-cols-3 gap-8">
@@ -168,16 +168,16 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                                 <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center">
                                     <Send size={18} className="text-red-500" />
                                 </div>
-                                <h4 className="font-bold text-gray-900 dark:text-white">Share Your Code</h4>
+                                <h4 className="font-bold text-white">Share Your Code</h4>
                                 <p className="text-xs text-gray-500 leading-relaxed">
-                                    Send your unique code <span className="text-gray-900 dark:text-white font-mono">{affiliate.referral_code}</span> to friends and family.
+                                    Send your unique code <span className="text-white font-mono">{affiliate.referral_code}</span> to friends and family.
                                 </p>
                             </div>
                             <div className="space-y-3">
                                 <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center">
                                     <ArrowUpRight size={18} className="text-blue-500" />
                                 </div>
-                                <h4 className="font-bold text-gray-900 dark:text-white">They Upgrade</h4>
+                                <h4 className="font-bold text-white">They Upgrade</h4>
                                 <p className="text-xs text-gray-500 leading-relaxed">
                                     When they use your code during upgrade and their payment is approved, you earn!
                                 </p>
@@ -186,7 +186,7 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                                 <div className="w-10 h-10 bg-green-600/10 rounded-xl flex items-center justify-center">
                                     <DollarSign size={18} className="text-green-500" />
                                 </div>
-                                <h4 className="font-bold text-gray-900 dark:text-white">Earn 20% commission</h4>
+                                <h4 className="font-bold text-white">Earn 20% commission</h4>
                                 <p className="text-xs text-gray-500 leading-relaxed">
                                     Every approved subscription nets you a 20% instant partner earning. More users, more wealth!
                                 </p>
@@ -201,16 +201,16 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                     key="referrals"
                     initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
                 >
-                    <div className="bg-gray-50 dark:bg-[#161618] rounded-3xl border border-gray-200 dark:border-white/5 overflow-hidden">
+                    <div className="bg-gray-50 bg-[#161618] rounded-3xl border border-gray-200 border-white/5 overflow-hidden">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-100 dark:bg-white/5 border-b border-gray-200 dark:border-white/5">
+                            <thead className="bg-white/5 border-b border-gray-200 border-white/5">
                                 <tr>
                                     <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest">User</th>
                                     <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest">Date</th>
                                     <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest text-right">Status</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-gray-700 dark:text-[#E1E1E1]">
+                            <tbody className="text-gray-700 text-[#E1E1E1]">
                                 {referrals.length === 0 ? (
                                     <tr>
                                         <td colSpan={3} className="px-6 py-12 text-center text-gray-500">
@@ -219,12 +219,12 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                                     </tr>
                                 ) : (
                                     referrals.map((ref: any, idx: number) => (
-                                        <tr key={idx} className="border-b border-gray-200 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/[0.02]">
-                                            <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{ref.referred_user_email}</td>
+                                        <tr key={idx} className="border-b border-gray-200 border-white/5 hover:bg-gray-100 hover:bg-white/[0.02]">
+                                            <td className="px-6 py-4 font-bold text-white">{ref.referred_user_email}</td>
                                             <td className="px-6 py-4 text-gray-500">{new Date(ref.created_at).toLocaleDateString()}</td>
                                             <td className="px-6 py-4 text-right">
                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                                                    ref.is_premium ? 'bg-green-500/20 text-green-500' : 'bg-gray-200 dark:bg-white/5 text-gray-500'
+                                                    ref.is_premium ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-gray-500'
                                                 }`}>
                                                     {ref.is_premium ? 'Paid' : 'Free'}
                                                 </span>
@@ -243,9 +243,9 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                     key="earnings"
                     initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
                 >
-                    <div className="bg-gray-50 dark:bg-[#161618] rounded-3xl border border-gray-200 dark:border-white/5 overflow-hidden">
+                    <div className="bg-gray-50 bg-[#161618] rounded-3xl border border-gray-200 border-white/5 overflow-hidden">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-100 dark:bg-white/5 border-b border-gray-200 dark:border-white/5">
+                            <thead className="bg-white/5 border-b border-gray-200 border-white/5">
                                 <tr>
                                     <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest">Date</th>
                                     <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest">Sale Amount</th>
@@ -253,7 +253,7 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                                     <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest text-right">Status</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-gray-700 dark:text-[#E1E1E1]">
+                            <tbody className="text-gray-700 text-[#E1E1E1]">
                                 {earnings.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
@@ -262,10 +262,10 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                                     </tr>
                                 ) : (
                                     earnings.map((earn: any) => (
-                                        <tr key={earn.id} className="border-b border-gray-200 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/[0.02]">
+                                        <tr key={earn.id} className="border-b border-gray-200 border-white/5 hover:bg-gray-100 hover:bg-white/[0.02]">
                                             <td className="px-6 py-4 text-gray-500">{new Date(earn.created_at).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 text-gray-400 dark:text-white/40">₦{Number(earn.total_amount || 0).toLocaleString()}</td>
-                                            <td className="px-6 py-4 font-black text-gray-900 dark:text-white">₦{Number(earn.amount).toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-white/40">₦{Number(earn.total_amount || 0).toLocaleString()}</td>
+                                            <td className="px-6 py-4 font-black text-white">₦{Number(earn.amount).toLocaleString()}</td>
                                             <td className="px-6 py-4 text-right">
                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
                                                     earn.status === 'paid' ? 'bg-blue-500/20 text-blue-500' : 'bg-yellow-500/20 text-yellow-500'

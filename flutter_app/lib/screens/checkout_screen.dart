@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../services/api_service.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -15,11 +17,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isProcessing = false;
   Map<String, dynamic>? _publicSettings;
   Map<String, dynamic>? _checkoutConfig;
+  File? _imageFile;
   
   final _senderNameController = TextEditingController();
   final _refController = TextEditingController();
   final _transactionRefController = TextEditingController();
-  final _proofUrlController = TextEditingController();
   String _selectedPlan = 'MONTHLY PREMIUM';
 
   @override
@@ -27,6 +29,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.initState();
     _loadData();
   }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+        _isAiProcessing = true;
+      });
+      
+      try {
+        final api = ApiService();
+        final uploadResult = await api.uploadProof(imageFile: _imageFile!);
+        if (uploadResult != null && uploadResult['success'] == true) {
+          final imageUrl = uploadResult['url'];
+          final extracted = await api.extractInfo(imageUrl);
+          if (extracted != null && mounted) {
+            setState(() {
+              _senderNameController.text = extracted['name'] ?? _senderNameController.text;
+              _transactionRefController.text = extracted['reference'] ?? _transactionRefController.text;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('AI DATA SYNCHRONIZED', style: TextStyle(letterSpacing: 2, fontSize: 10, fontWeight: FontWeight.bold))));
+          }
+        }
+      } catch (e) {
+        print("AI Extraction failed: $e");
+      } finally {
+        if (mounted) setState(() => _isAiProcessing = false);
+      }
+    }
+  }
+
+  bool _isAiProcessing = false;
 
   Future<void> _loadData() async {
     final settings = await ApiService().getPublicSettings();
@@ -163,7 +198,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   children: [
                     Text(title, style: GoogleFonts.manrope(color: active ? Colors.white : Colors.white38, fontSize: 8, fontWeight: FontWeight.black, letterSpacing: 1)),
                     const SizedBox(height: 2),
-                    Text(price, style: GoogleFonts.playfairDisplay(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white, fontStyle: FontStyle.italic)),
+                    Text(price, style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -1)),
                   ],
                 ),
               ],
@@ -199,7 +234,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _buildDetailBox('ACCOUNT NUMBER', _checkoutConfig!['account_number'], Icons.numbers, copyable: true, primary: true),
           if (_checkoutConfig!['payment_note']?.isNotEmpty == true) ...[
             const SizedBox(height: 20),
-            Text(_checkoutConfig!['payment_note'], style: TextStyle(color: Colors.white.withOpacity(0.15), fontSize: 9, fontStyle: FontStyle.italic, fontWeight: FontWeight.w500)),
+            Text(_checkoutConfig!['payment_note'], style: TextStyle(color: Colors.white.withOpacity(0.15), fontSize: 9,  fontWeight: FontWeight.w500)),
           ]
         ],
       ),
@@ -258,7 +293,50 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             children: [
                 Expanded(child: _buildInput('REFERRAL CODE', 'OPTIONAL', _refController)),
                 const SizedBox(width: 12),
-                Expanded(child: _buildInput('PROOF URL', 'PASTE LINK', _proofUrlController)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('PAYMENT PROOF', style: GoogleFonts.manrope(color: Colors.white24, fontSize: 7, fontWeight: FontWeight.black, letterSpacing: 2)),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _pickImage,
+                        child: Container(
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.05)),
+                          ),
+                          child: _imageFile != null 
+                            ? Stack(
+                                children: [
+                                  Image.file(_imageFile!, fit: BoxFit.cover, width: double.infinity, height: 52),
+                                  if (_isAiProcessing)
+                                    Container(
+                                      color: Colors.black54,
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 16, height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.upload_file_rounded, color: Colors.white.withOpacity(0.1), size: 16),
+                                  const SizedBox(width: 8),
+                                  Text('SELECT IMAGE', style: GoogleFonts.manrope(color: Colors.white.withOpacity(0.1), fontSize: 8, fontWeight: FontWeight.black)),
+                                ],
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
         ),
       ],
@@ -289,43 +367,59 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _handleSubmit() async {
-    if (_senderNameController.text.isEmpty || _transactionRefController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ALL FIELDS MANDATORY')));
+    if (_senderNameController.text.isEmpty || _transactionRefController.text.isEmpty || _imageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ALL FIELDS AND IMAGE MANDATORY')));
       return;
     }
 
     setState(() => _isProcessing = true);
     
-    final payload = {
-      'user_email': widget.userEmail,
-      'plan': _selectedPlan,
-      'amount': _selectedPlan.contains('MONTHLY') ? 1500 : 15000,
-      'sender_name': _senderNameController.text,
-      'transaction_reference': _transactionRefController.text,
-      'referral_code': _refController.text,
-      'proof_image_url': _proofUrlController.text,
-      'tracking_answers': []
-    };
+    try {
+        final uploadResult = await ApiService().uploadProof(imageFile: _imageFile!);
+        
+        if (uploadResult != null && uploadResult['success'] == true) {
+            final payload = {
+                'user_email': widget.userEmail,
+                'plan': _selectedPlan,
+                'amount': _selectedPlan.contains('MONTHLY') ? 1500 : 15000,
+                'sender_name': _senderNameController.text,
+                'transaction_reference': _transactionRefController.text,
+                'referral_code': _refController.text,
+                'proof_image_url': uploadResult['url'],
+                'tracking_answers': []
+            };
 
-    final success = await ApiService().submitPayment(payload);
-
-    if (mounted) {
-      setState(() => _isProcessing = false);
-      if (success) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF151517),
-            title: const Text('SUBMITTED', style: TextStyle(color: Colors.green, letterSpacing: 2, fontWeight: FontWeight.bold)),
-            content: const Text('Your proof of payment is being reviewed. Access will be granted within 24 hours.'),
-            actions: [
-              TextButton(onPressed: () { Navigator.pop(context); Navigator.pop(context); }, child: const Text('OK'))
-            ],
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submission failed. Try again.')));
-      }
+            final success = await ApiService().submitPayment(payload);
+            
+            if (mounted) {
+                setState(() => _isProcessing = false);
+                if (success) {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        backgroundColor: const Color(0xFF151517),
+                        title: const Text('SUBMITTED', style: TextStyle(color: Colors.green, letterSpacing: 2, fontWeight: FontWeight.bold)),
+                        content: const Text('Your proof of payment is being reviewed. Access will be granted within 24 hours.'),
+                        actions: [
+                          TextButton(onPressed: () { Navigator.pop(context); Navigator.pop(context); }, child: const Text('OK'))
+                        ],
+                      ),
+                    );
+                } else {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submission failed. Try again.')));
+                }
+            }
+        } else {
+            if (mounted) {
+                setState(() => _isProcessing = false);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image upload failed.')));
+            }
+        }
+    } catch (e) {
+        if (mounted) {
+            setState(() => _isProcessing = false);
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('An error occurred.')));
+        }
     }
   }
 }

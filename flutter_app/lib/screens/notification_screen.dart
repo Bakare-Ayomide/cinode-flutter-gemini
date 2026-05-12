@@ -50,7 +50,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('ARCHIVE TERMINAL', style: GoogleFonts.playfairDisplay(fontSize: 12, letterSpacing: 3, fontWeight: FontWeight.black, fontStyle: FontStyle.italic, color: Colors.white70)),
+            Text('ARCHIVE TERMINAL', style: GoogleFonts.manrope(fontSize: 12, letterSpacing: 3, fontWeight: FontWeight.black,  color: Colors.white70)),
             Text('${_notifications.where((n) => n['is_read'] == 0).length} UNREAD ENTRIES', style: GoogleFonts.manrope(fontSize: 7, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.black)),
           ],
         ),

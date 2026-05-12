@@ -144,7 +144,6 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleDeleteUser = async (email: string) => {
-    if (!confirm(`Delete user ${email}?`)) return;
     try {
       await movieApi.deleteUser(email);
       showMsg('success', 'User deleted');
@@ -165,7 +164,6 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleRevokePremium = async (email: string) => {
-    if (!confirm(`Revoke premium from ${email}?`)) return;
     try {
       await movieApi.revokePremium(email);
       showMsg('success', 'Premium status revoked');
@@ -254,9 +252,9 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#0A0A0B] text-gray-900 dark:text-white">
+    <div className="flex flex-col h-full bg-[#0A0A0B] text-white">
       {/* Header */}
-      <div className="px-8 py-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-[#0D0D0E]">
+      <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#0D0D0E]">
         <div className="flex items-center gap-4">
           <div className="p-2 bg-red-600 rounded-lg">
             <ShieldCheck size={24} />
@@ -284,65 +282,65 @@ const AdminDashboard: React.FC = () => {
 
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
         {/* Sidebar / Mobile Nav */}
-        <div className="flex md:flex-col items-center md:items-stretch overflow-x-auto md:overflow-x-visible border-b md:border-b-0 md:border-r border-gray-100 dark:border-white/5 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1 no-scrollbar bg-gray-50/50 dark:bg-[#0D0D0E]/50 md:bg-transparent md:w-64">
+        <div className="flex md:flex-col items-center md:items-stretch overflow-x-auto md:overflow-x-visible border-b md:border-b-0 md:border-r border-white/5 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1 no-scrollbar bg-gray-50/50 bg-[#0D0D0E]/50 md:bg-transparent md:w-64">
           <button 
             onClick={() => setActiveTab('stats')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'stats' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'stats' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Database size={18} /> <span className="hidden md:inline">Overview</span>
           </button>
           
-          <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-white/20 mt-4 mb-1 ml-4">Core</div>
+          <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-white/20 mt-4 mb-1 ml-4">Core</div>
           <button 
             onClick={() => setActiveTab('users')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'users' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'users' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Users size={18} /> <span className="hidden md:inline">Users</span>
           </button>
           <button 
             onClick={() => setActiveTab('content')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'content' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'content' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Film size={18} /> <span className="hidden md:inline">Vault</span>
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'settings' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'settings' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Settings size={18} /> <span className="hidden md:inline">Config</span>
           </button>
 
-          <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-white/20 mt-4 mb-1 ml-4">Growth</div>
+          <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-white/20 mt-4 mb-1 ml-4">Growth</div>
           <button 
             onClick={() => setActiveTab('payments')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'payments' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'payments' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <CreditCard size={18} /> <span className="hidden md:inline">Payments</span>
             {stats?.pending_payments > 0 && <span className="ml-auto bg-red-500 text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-black text-white">{stats.pending_payments}</span>}
           </button>
           <button 
             onClick={() => setActiveTab('payconfig')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'payconfig' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'payconfig' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <DollarSign size={18} /> <span className="hidden md:inline">Checkout Config</span>
           </button>
           <button 
             onClick={() => setActiveTab('affiliates')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'affiliates' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'affiliates' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <ArrowUpRight size={18} /> <span className="hidden md:inline">Affiliates</span>
           </button>
 
-          <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-white/20 mt-4 mb-1 ml-4">Audience</div>
+          <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-white/20 mt-4 mb-1 ml-4">Audience</div>
           <button 
             onClick={() => setActiveTab('ads')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'ads' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'ads' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Megaphone size={18} /> <span className="hidden md:inline">Ad Manager</span>
           </button>
           <button 
             onClick={() => setActiveTab('notifications')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'notifications' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'notifications' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Bell size={18} /> <span className="hidden md:inline">Notifications</span>
           </button>
@@ -351,43 +349,43 @@ const AdminDashboard: React.FC = () => {
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 relative">
           {loading && (
-            <div className="absolute inset-0 bg-white/50 dark:bg-[#0A0A0B]/50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-white/50 bg-[#0A0A0B]/50 backdrop-blur-sm z-50 flex items-center justify-center">
               <RefreshCw className="animate-spin text-red-600" size={32} />
             </div>
           )}
 
           {activeTab === 'stats' && stats && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              <div className="p-6 md:p-8 bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-2xl space-y-4 shadow-sm">
+              <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
                 <Users className="text-red-500" size={28} />
-                <h3 className="text-gray-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest">Total Users</h3>
-                <p className="text-4xl md:text-5xl font-serif italic text-gray-900 dark:text-white">{stats.users}</p>
+                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Total Users</h3>
+                <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.users}</p>
               </div>
-              <div className="p-6 md:p-8 bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-2xl space-y-4 shadow-sm">
+              <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
                 <ShieldCheck className="text-blue-500" size={28} />
-                <h3 className="text-gray-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest">Active Overrides</h3>
-                <p className="text-4xl md:text-5xl font-serif italic text-gray-900 dark:text-white">{stats.overrides}</p>
+                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Active Overrides</h3>
+                <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.overrides}</p>
               </div>
-              <div className="p-6 md:p-8 bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-2xl space-y-4 shadow-sm">
+              <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
                 <CreditCard className="text-yellow-500" size={28} />
-                <h3 className="text-gray-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest">Pending Payments</h3>
-                <p className="text-4xl md:text-5xl font-serif italic text-gray-900 dark:text-white">{stats.pending_payments}</p>
+                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Pending Payments</h3>
+                <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.pending_payments}</p>
               </div>
-              <div className="p-6 md:p-8 bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-2xl space-y-4 shadow-sm">
+              <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
                 <RefreshCw className="text-green-500" size={28} />
-                <h3 className="text-gray-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest">User Reviews</h3>
-                <p className="text-4xl md:text-5xl font-serif italic text-gray-900 dark:text-white">{stats.reviews}</p>
+                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">User Reviews</h3>
+                <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.reviews}</p>
               </div>
             </div>
           )}
 
           {activeTab === 'payments' && (
             <div className="space-y-6">
-                <h2 className="text-xl md:text-2xl font-serif italic text-gray-900 dark:text-white">Payment Submissions</h2>
+                <h2 className="text-xl md:text-2xl font-serif italic text-white">Payment Submissions</h2>
                 <div className="grid grid-cols-1 gap-4">
                     {payments.map(p => (
-                        <div key={p.id} className="bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-2xl p-6 flex flex-col md:flex-row gap-6 shadow-sm">
-                           <div className="w-full md:w-48 h-64 md:h-48 shrink-0 bg-gray-200 dark:bg-white/5 rounded-xl overflow-hidden relative group">
+                        <div key={p.id} className="bg-[#0D0D0E] border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row gap-6 shadow-sm">
+                           <div className="w-full md:w-48 h-64 md:h-48 shrink-0 bg-white/5 rounded-xl overflow-hidden relative group">
                                 <img src={p.proof_image_url} alt="Proof" className="w-full h-full object-cover" />
                                 <a href={p.proof_image_url} target="_blank" className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                                     <Eye size={24} />
@@ -397,8 +395,8 @@ const AdminDashboard: React.FC = () => {
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <p className="text-[10px] text-red-500 font-black uppercase tracking-widest mb-1">{p.plan} Plan — ₦{p.amount.toLocaleString()}</p>
-                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{p.user_email}</h3>
-                                        <p className="text-xs text-gray-400 dark:text-white/40">{new Date(p.created_at).toLocaleString()}</p>
+                                        <h3 className="text-xl font-bold text-white">{p.user_email}</h3>
+                                        <p className="text-xs text-white/40">{new Date(p.created_at).toLocaleString()}</p>
                                     </div>
                                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
                                         p.status === 'approved' ? 'bg-green-500/20 text-green-500' :
@@ -410,26 +408,26 @@ const AdminDashboard: React.FC = () => {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <p className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest mb-1">Sender Name</p>
-                                        <p className="text-sm font-medium text-gray-700 dark:text-[#E5E5E5]">{p.sender_name}</p>
+                                        <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mb-1">Sender Name</p>
+                                        <p className="text-sm font-medium text-gray-700 text-[#E5E5E5]">{p.sender_name}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest mb-1">Transaction Ref</p>
-                                        <p className="text-sm font-medium text-gray-700 dark:text-[#E5E5E5]">{p.transaction_reference}</p>
+                                        <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mb-1">Transaction Ref</p>
+                                        <p className="text-sm font-medium text-gray-700 text-[#E5E5E5]">{p.transaction_reference}</p>
                                     </div>
                                     {p.referral_code && (
                                         <div>
-                                            <p className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest mb-1">Referral Code</p>
+                                            <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mb-1">Referral Code</p>
                                             <p className="text-sm font-bold text-red-500">{p.referral_code}</p>
                                         </div>
                                     )}
                                 </div>
 
                                 {p.status === 'pending' && (
-                                    <div className="flex flex-col gap-4 pt-4 border-t border-gray-100 dark:border-white/5">
+                                    <div className="flex flex-col gap-4 pt-4 border-t border-white/5">
                                         <textarea 
                                             placeholder="Admin notes (reason for rejection etc)"
-                                            className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:border-red-600 outline-none text-gray-900 dark:text-white"
+                                            className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-red-600 outline-none text-white"
                                             onChange={(e) => setReviewPayment({ id: p.id, status: 'approved', admin_notes: e.target.value })}
                                         />
                                         <div className="flex gap-2">
@@ -470,7 +468,7 @@ const AdminDashboard: React.FC = () => {
           {activeTab === 'payconfig' && (
             <div className="space-y-8">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-xl md:text-2xl font-serif italic text-gray-900 dark:text-white">Checkout Configuration</h2>
+                    <h2 className="text-xl md:text-2xl font-serif italic text-white">Checkout Configuration</h2>
                     <button 
                         onClick={async () => {
                             try {
@@ -486,77 +484,77 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-8">
-                    <div className="bg-gray-50 dark:bg-[#0D0D0E] p-8 border border-gray-100 dark:border-white/5 rounded-3xl space-y-6 shadow-sm">
-                        <h3 className="text-xs uppercase tracking-widest text-gray-400 dark:text-white/40 font-black">Bank Transfer</h3>
+                    <div className="bg-[#0D0D0E] p-8 border border-white/5 rounded-3xl space-y-6 shadow-sm">
+                        <h3 className="text-xs uppercase tracking-widest text-white/40 font-black">Bank Transfer</h3>
                         <div className="space-y-4">
                             <div className="space-y-1">
-                                <label className="text-[10px] text-gray-300 dark:text-white/20 font-black uppercase tracking-widest ml-2">Bank Name</label>
+                                <label className="text-[10px] text-gray-300 text-white/20 font-black uppercase tracking-widest ml-2">Bank Name</label>
                                 <input 
                                     type="text" value={newPayConfig.bank_name}
                                     onChange={e => setNewPayConfig({...newPayConfig, bank_name: e.target.value})}
-                                    className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                    className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] text-gray-300 dark:text-white/20 font-black uppercase tracking-widest ml-2">Account Name</label>
+                                <label className="text-[10px] text-gray-300 text-white/20 font-black uppercase tracking-widest ml-2">Account Name</label>
                                 <input 
                                     type="text" value={newPayConfig.account_name}
                                     onChange={e => setNewPayConfig({...newPayConfig, account_name: e.target.value})}
-                                    className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                    className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] text-gray-300 dark:text-white/20 font-black uppercase tracking-widest ml-2">Account Number</label>
+                                <label className="text-[10px] text-gray-300 text-white/20 font-black uppercase tracking-widest ml-2">Account Number</label>
                                 <input 
                                     type="text" value={newPayConfig.account_number}
                                     onChange={e => setNewPayConfig({...newPayConfig, account_number: e.target.value})}
-                                    className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                    className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-gray-50 dark:bg-[#0D0D0E] p-8 border border-gray-100 dark:border-white/5 rounded-3xl space-y-6 shadow-sm">
-                        <h3 className="text-xs uppercase tracking-widest text-gray-400 dark:text-white/40 font-black">Alternative Methods</h3>
+                    <div className="bg-[#0D0D0E] p-8 border border-white/5 rounded-3xl space-y-6 shadow-sm">
+                        <h3 className="text-xs uppercase tracking-widest text-white/40 font-black">Alternative Methods</h3>
                         <div className="space-y-4">
                             <div className="space-y-1">
-                                <label className="text-[10px] text-gray-300 dark:text-white/20 font-black uppercase tracking-widest ml-2">Crypto Address (USDT BEP20)</label>
+                                <label className="text-[10px] text-gray-300 text-white/20 font-black uppercase tracking-widest ml-2">Crypto Address (USDT BEP20)</label>
                                 <input 
                                     type="text" value={newPayConfig.crypto_address}
                                     onChange={e => setNewPayConfig({...newPayConfig, crypto_address: e.target.value})}
-                                    className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                    className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] text-gray-300 dark:text-white/20 font-black uppercase tracking-widest ml-2">Other Method (Mobile Money etc)</label>
+                                <label className="text-[10px] text-gray-300 text-white/20 font-black uppercase tracking-widest ml-2">Other Method (Mobile Money etc)</label>
                                 <textarea 
                                     value={newPayConfig.other_method}
                                     onChange={e => setNewPayConfig({...newPayConfig, other_method: e.target.value})}
-                                    className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm h-28 text-gray-900 dark:text-white"
+                                    className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm h-28 text-white"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="md:col-span-2 bg-gray-50 dark:bg-[#0D0D0E] p-8 border border-gray-100 dark:border-white/5 rounded-3xl space-y-6 shadow-sm">
+                    <div className="md:col-span-2 bg-[#0D0D0E] p-8 border border-white/5 rounded-3xl space-y-6 shadow-sm">
                         <div className="flex justify-between items-center">
-                            <h3 className="text-xs uppercase tracking-widest text-gray-400 dark:text-white/40 font-black">Checkout Page Config</h3>
+                            <h3 className="text-xs uppercase tracking-widest text-white/40 font-black">Checkout Page Config</h3>
                         </div>
                         <div className="grid md:grid-cols-2 gap-8">
                             <div className="space-y-1">
-                                <label className="text-[10px] text-gray-300 dark:text-white/20 font-black uppercase tracking-widest ml-2">Payment Note (Banner at top)</label>
+                                <label className="text-[10px] text-gray-300 text-white/20 font-black uppercase tracking-widest ml-2">Payment Note (Banner at top)</label>
                                 <textarea 
                                     value={newPayConfig.payment_note}
                                     onChange={e => setNewPayConfig({...newPayConfig, payment_note: e.target.value})}
-                                    className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm h-32 text-gray-900 dark:text-white"
+                                    className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm h-32 text-white"
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] text-gray-300 dark:text-white/20 font-black uppercase tracking-widest ml-2">Tracking Questions (JSON Array of strings)</label>
+                                <label className="text-[10px] text-gray-300 text-white/20 font-black uppercase tracking-widest ml-2">Tracking Questions (JSON Array of strings)</label>
                                 <textarea 
                                     value={newPayConfig.tracking_questions}
                                     onChange={e => setNewPayConfig({...newPayConfig, tracking_questions: e.target.value})}
-                                    className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-mono h-32 text-gray-900 dark:text-white"
+                                    className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm font-mono h-32 text-white"
                                     placeholder='["What device do you use?"]'
                                 />
                             </div>
@@ -570,21 +568,21 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-8">
                 <div className="grid md:grid-cols-2 gap-8">
                     {/* Create Affiliate */}
-                    <div className="bg-gray-50 dark:bg-[#0D0D0E] p-8 border border-gray-100 dark:border-white/5 rounded-3xl space-y-6 shadow-sm">
-                        <h2 className="text-xl font-serif italic text-gray-900 dark:text-white">Promote Affiliate</h2>
+                    <div className="bg-[#0D0D0E] p-8 border border-white/5 rounded-3xl space-y-6 shadow-sm">
+                        <h2 className="text-xl font-serif italic text-white">Promote Affiliate</h2>
                         <div className="space-y-4">
                             <input 
                                 type="email" placeholder="user@example.com"
                                 value={newAffiliate.email}
                                 onChange={e => setNewAffiliate({...newAffiliate, email: e.target.value})}
-                                className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                             />
                             <div className="flex gap-2">
                                 <input 
                                     type="text" placeholder="REFCODE100"
                                     value={newAffiliate.referral_code}
                                     onChange={e => setNewAffiliate({...newAffiliate, referral_code: e.target.value.toUpperCase()})}
-                                    className="flex-1 bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-black uppercase tracking-widest text-gray-900 dark:text-white"
+                                    className="flex-1 bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm font-black uppercase tracking-widest text-white"
                                 />
                                 <button 
                                     onClick={async () => {
@@ -605,14 +603,14 @@ const AdminDashboard: React.FC = () => {
 
                     {/* Quick Stats Summary */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 dark:bg-[#0D0D0E] p-6 border border-gray-100 dark:border-white/5 rounded-3xl shadow-sm">
-                            <p className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest mb-1">Total Payouts Done</p>
+                        <div className="bg-[#0D0D0E] p-6 border border-white/5 rounded-3xl shadow-sm">
+                            <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mb-1">Total Payouts Done</p>
                             <p className="text-3xl font-serif italic text-blue-500">
                                 ₦{earnings.filter(e => e.status === 'paid').reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}
                             </p>
                         </div>
-                        <div className="bg-gray-50 dark:bg-[#0D0D0E] p-6 border border-gray-100 dark:border-white/5 rounded-3xl shadow-sm">
-                            <p className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest mb-1">Owed Commissions</p>
+                        <div className="bg-[#0D0D0E] p-6 border border-white/5 rounded-3xl shadow-sm">
+                            <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mb-1">Owed Commissions</p>
                             <p className="text-3xl font-serif italic text-red-500">
                                 ₦{earnings.filter(e => e.status === 'pending').reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}
                             </p>
@@ -621,33 +619,33 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div className="space-y-6">
-                    <h2 className="text-xl md:text-2xl font-serif italic text-gray-900 dark:text-white">Affiliate Network</h2>
-                    <div className="bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm">
+                    <h2 className="text-xl md:text-2xl font-serif italic text-white">Affiliate Network</h2>
+                    <div className="bg-[#0D0D0E] border border-white/5 rounded-2xl overflow-hidden shadow-sm">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-100 dark:bg-white/5 border-b border-gray-100 dark:border-white/5">
+                            <thead className="bg-white/5 border-b border-white/5">
                                 <tr>
-                                    <th className="px-6 py-4 text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest">Affiliate</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest">Code</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest">Stats</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest text-right">Actions</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Affiliate</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Code</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Stats</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-gray-700 dark:text-[#E1E1E1]">
+                            <tbody className="text-gray-700 text-[#E1E1E1]">
                                 {affiliates.map(aff => (
-                                    <tr key={aff.id} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-200/50 dark:hover:bg-white/[0.02]">
+                                    <tr key={aff.id} className="border-b border-white/5 hover:bg-gray-200/50 hover:bg-white/[0.02]">
                                         <td className="px-6 py-4 font-medium">{aff.user_email}</td>
                                         <td className="px-6 py-4 font-black tracking-widest text-red-500">{aff.referral_code}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2 text-gray-900 dark:text-white">
+                                                <div className="flex items-center gap-2 text-white">
                                                     <span className="font-black tracking-tight text-sm">₦{Number(aff.total_earnings || 0).toLocaleString()}</span>
-                                                    <span className="text-[10px] text-gray-400 dark:text-white/20 uppercase tracking-widest font-black">Total</span>
+                                                    <span className="text-[10px] text-white/20 uppercase tracking-widest font-black">Total</span>
                                                 </div>
                                                 <div className="flex gap-2 text-[9px] uppercase tracking-widest font-black">
                                                     <span className="text-red-500">₦{Number(aff.pending_earnings || 0).toLocaleString()} Owed</span>
                                                     <span className="text-blue-500">₦{Number((aff.total_earnings || 0) - (aff.pending_earnings || 0)).toLocaleString()} Paid</span>
                                                 </div>
-                                                <p className="text-[9px] text-gray-400 dark:text-white/20 mt-1">{aff.referral_count} referrals • {aff.paid_referral_count || 0} paid</p>
+                                                <p className="text-[9px] text-white/20 mt-1">{aff.referral_count} referrals • {aff.paid_referral_count || 0} paid</p>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -675,7 +673,7 @@ const AdminDashboard: React.FC = () => {
 
                 <div className="space-y-6">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-xl md:text-2xl font-serif italic text-gray-900 dark:text-white">Pending Payouts</h2>
+                        <h2 className="text-xl md:text-2xl font-serif italic text-white">Pending Payouts</h2>
                         <button 
                              onClick={async () => {
                                 const pendings = earnings.filter(e => e.status === 'pending').map(e => e.id);
@@ -686,28 +684,28 @@ const AdminDashboard: React.FC = () => {
                                     fetchData();
                                 } catch (err) { showMsg('error', 'Payout failed'); }
                              }}
-                             className="px-4 py-2 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-white/10 text-gray-600 dark:text-white/70"
+                             className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 text-gray-600 text-white/70"
                         > Mark All as Paid </button>
                     </div>
-                    <div className="bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-[#0D0D0E] border border-white/5 rounded-2xl overflow-hidden shadow-sm">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-100 dark:bg-white/5 border-b border-gray-100 dark:border-white/5">
+                            <thead className="bg-white/5 border-b border-white/5">
                                 <tr>
-                                    <th className="px-6 py-4 text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest">Recipient</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest">Amount</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest">Payer Info</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest text-right">Actions</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Recipient</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Amount</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Payer Info</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-gray-700 dark:text-[#E1E1E1]">
+                            <tbody className="text-gray-700 text-[#E1E1E1]">
                                 {earnings.filter(e => e.status === 'pending').length === 0 ? (
                                     <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">No pending payouts. Everything is cleared!</td></tr>
                                 ) : (
                                     earnings.filter(e => e.status === 'pending').map(earn => (
-                                        <tr key={earn.id} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-200/50 dark:hover:bg-white/[0.02]">
+                                        <tr key={earn.id} className="border-b border-white/5 hover:bg-gray-200/50 hover:bg-white/[0.02]">
                                             <td className="px-6 py-4 font-medium">{earn.affiliate_email}</td>
                                             <td className="px-6 py-4 font-black">₦{earn.amount}</td>
-                                            <td className="px-6 py-4 text-xs text-gray-400 dark:text-white/40">From {earn.payer_email} ({earn.plan})</td>
+                                            <td className="px-6 py-4 text-xs text-white/40">From {earn.payer_email} ({earn.plan})</td>
                                             <td className="px-6 py-4 text-right">
                                                 <button 
                                                     onClick={async () => {
@@ -734,24 +732,24 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'ads' && (
             <div className="space-y-8">
-                <div className="bg-gray-50 dark:bg-[#0D0D0E] p-8 border border-gray-100 dark:border-white/5 rounded-3xl space-y-6 shadow-sm">
-                    <h2 className="text-xl font-serif italic text-gray-900 dark:text-white">{newAd.id ? 'Edit Campaign' : 'Create Ad Campaign'}</h2>
+                <div className="bg-[#0D0D0E] p-8 border border-white/5 rounded-3xl space-y-6 shadow-sm">
+                    <h2 className="text-xl font-serif italic text-white">{newAd.id ? 'Edit Campaign' : 'Create Ad Campaign'}</h2>
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">Internal Name</label>
+                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Internal Name</label>
                             <input 
                                 type="text" placeholder="October Promo"
                                 value={newAd.name}
                                 onChange={e => setNewAd({...newAd, name: e.target.value})}
-                                className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">Placement Slot</label>
+                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Placement Slot</label>
                             <select 
                                 value={newAd.placement}
                                 onChange={e => setNewAd({...newAd, placement: e.target.value})}
-                                className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                             >
                                 <option value="homepage">Homepage Banner</option>
                                 <option value="pre-roll">Pre-roll Video</option>
@@ -761,14 +759,14 @@ const AdminDashboard: React.FC = () => {
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">Ad Type</label>
+                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Ad Type</label>
                             <div className="flex gap-2">
                                 {['image', 'video', 'html'].map(t => (
                                     <button 
                                         key={t}
                                         onClick={() => setNewAd({...newAd, type: t as any})}
                                         className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                                            newAd.type === t ? 'bg-red-600 border-red-600 text-white' : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/5 text-gray-400 dark:text-white/40'
+                                            newAd.type === t ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-gray-200 border-white/5 text-white/40'
                                         }`}
                                     >
                                         {t}
@@ -777,31 +775,31 @@ const AdminDashboard: React.FC = () => {
                             </div>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">Click-through Link</label>
+                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Click-through Link</label>
                             <input 
                                 type="url" placeholder="https://..."
                                 value={newAd.click_url}
                                 onChange={e => setNewAd({...newAd, click_url: e.target.value})}
-                                className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                             />
                         </div>
                         <div className="md:col-span-2 space-y-1">
-                            <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">
+                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">
                                 {newAd.type === 'html' ? 'HTML Content' : 'Media URL (S3 / Imgur / Direct)'}
                             </label>
                             <textarea 
                                 value={newAd.type === 'html' ? newAd.html_content : newAd.media_url}
                                 onChange={e => newAd.type === 'html' ? setNewAd({...newAd, html_content: e.target.value}) : setNewAd({...newAd, media_url: e.target.value})}
-                                className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm h-24 font-mono text-gray-900 dark:text-white"
+                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm h-24 font-mono text-white"
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4 md:col-span-2">
                             <div className="space-y-1">
-                                <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">Priority (Higher = Wins)</label>
+                                <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Priority (Higher = Wins)</label>
                                 <input 
                                     type="number" value={newAd.priority}
                                     onChange={e => setNewAd({...newAd, priority: Number(e.target.value)})}
-                                    className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                    className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                                 />
                             </div>
                             <div className="flex items-end pb-1">
@@ -826,14 +824,14 @@ const AdminDashboard: React.FC = () => {
                                     fetchData();
                                 } catch (err) { showMsg('error', 'Save failed'); }
                             }}
-                            className="bg-gray-900 dark:bg-white text-white dark:text-black px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-red-600 dark:hover:bg-red-600 hover:text-white transition-all shadow-2xl"
+                            className="bg-white text-black px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-red-600 hover:text-white transition-all shadow-2xl"
                         >
                             Persist Ad Campaign
                         </button>
                         {newAd.id && (
                             <button 
                                 onClick={() => setNewAd({ name: '', type: 'image', media_url: '', click_url: '', placement: 'homepage', priority: 0, is_active: true })}
-                                className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 scale-90 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs text-gray-400 dark:text-white/40 hover:text-gray-900 dark:hover:text-white"
+                                className="bg-white/5 border border-white/10 scale-90 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs text-white/40 hover:text-gray-900 hover:text-white"
                             >
                                 Cancel Edit
                             </button>
@@ -842,11 +840,11 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div className="space-y-6">
-                    <h2 className="text-xl md:text-2xl font-serif italic text-gray-900 dark:text-white">Active Campaigns</h2>
+                    <h2 className="text-xl md:text-2xl font-serif italic text-white">Active Campaigns</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {ads.map(item => (
-                            <div key={item.id} className="bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-3xl p-6 flex gap-6 shadow-sm">
-                                <div className="w-16 h-16 bg-gray-200 dark:bg-white/5 rounded-2xl shrink-0 flex items-center justify-center relative overflow-hidden">
+                            <div key={item.id} className="bg-[#0D0D0E] border border-white/5 rounded-3xl p-6 flex gap-6 shadow-sm">
+                                <div className="w-16 h-16 bg-white/5 rounded-2xl shrink-0 flex items-center justify-center relative overflow-hidden">
                                     {item.type === 'image' && <img src={item.media_url} className="w-full h-full object-cover" />}
                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                                         <Megaphone size={20} className="text-white/40" />
@@ -856,7 +854,7 @@ const AdminDashboard: React.FC = () => {
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <p className="text-[10px] text-red-500 font-black uppercase tracking-widest mb-0.5">{item.placement}</p>
-                                            <h4 className="font-bold truncate text-gray-900 dark:text-white">{item.name}</h4>
+                                            <h4 className="font-bold truncate text-white">{item.name}</h4>
                                         </div>
                                         <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${item.is_active ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
                                             {item.is_active ? 'Live' : 'Paused'}
@@ -864,28 +862,27 @@ const AdminDashboard: React.FC = () => {
                                     </div>
                                     <div className="flex gap-4 mt-3">
                                         <div>
-                                            <p className="text-[9px] text-gray-400 dark:text-white/20 font-black uppercase mb-0.5">Impressions</p>
-                                            <p className="text-xs font-bold text-gray-600 dark:text-white">{item.impressions.toLocaleString()}</p>
+                                            <p className="text-[9px] text-white/20 font-black uppercase mb-0.5">Impressions</p>
+                                            <p className="text-xs font-bold text-gray-600 text-white">{item.impressions.toLocaleString()}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[9px] text-gray-400 dark:text-white/20 font-black uppercase mb-0.5">Clicks</p>
-                                            <p className="text-xs font-bold text-gray-600 dark:text-white">{item.clicks.toLocaleString()}</p>
+                                            <p className="text-[9px] text-white/20 font-black uppercase mb-0.5">Clicks</p>
+                                            <p className="text-xs font-bold text-gray-600 text-white">{item.clicks.toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex flex-col gap-2 text-gray-400 dark:text-white/40">
+                                <div className="flex flex-col gap-2 text-white/40">
                                     <button 
                                         onClick={() => {
                                             setNewAd(item);
                                             window.scrollTo({ top: 0, behavior: 'smooth' });
                                         }}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white rounded-lg transition-all"
+                                        className="p-2 hover:bg-white/10 hover:text-gray-900 hover:text-white rounded-lg transition-all"
                                     >
                                         <Settings size={16} />
                                     </button>
                                     <button 
                                         onClick={async () => {
-                                            if (!confirm('Delete ad?')) return;
                                             try {
                                                 await movieApi.deleteAdminAd(item.id);
                                                 showMsg('success', 'Ad deleted');
@@ -906,24 +903,24 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'notifications' && (
             <div className="space-y-8">
-                <div className="bg-gray-50 dark:bg-[#0D0D0E] p-8 border border-gray-100 dark:border-white/5 rounded-3xl space-y-6 shadow-sm">
-                    <h2 className="text-xl font-serif italic text-gray-900 dark:text-white">Compose Notification</h2>
+                <div className="bg-[#0D0D0E] p-8 border border-white/5 rounded-3xl space-y-6 shadow-sm">
+                    <h2 className="text-xl font-serif italic text-white">Compose Notification</h2>
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">Title</label>
+                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Title</label>
                             <input 
                                 type="text" placeholder="Update Available"
                                 value={newNotif.title}
                                 onChange={e => setNewNotif({...newNotif, title: e.target.value})}
-                                className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">Visual Tone</label>
+                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Visual Tone</label>
                             <select 
                                 value={newNotif.type}
                                 onChange={e => setNewNotif({...newNotif, type: e.target.value})}
-                                className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                             >
                                 <option value="info">Info (Blue)</option>
                                 <option value="success">Success (Green)</option>
@@ -932,22 +929,22 @@ const AdminDashboard: React.FC = () => {
                             </select>
                         </div>
                         <div className="md:col-span-2 space-y-1">
-                            <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">Message Body</label>
+                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Message Body</label>
                             <textarea 
                                 value={newNotif.message}
                                 onChange={e => setNewNotif({...newNotif, message: e.target.value})}
-                                className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm h-24 text-gray-900 dark:text-white"
+                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm h-24 text-white"
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">Audience</label>
+                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Audience</label>
                             <div className="flex gap-2">
                                 {['all', 'user'].map(t => (
                                     <button 
                                         key={t}
                                         onClick={() => setNewNotif({...newNotif, target_type: t as any})}
                                         className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                                            newNotif.target_type === t ? 'bg-red-600 border-red-600 text-white' : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/5 text-gray-400 dark:text-white/40'
+                                            newNotif.target_type === t ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-gray-200 border-white/5 text-white/40'
                                         }`}
                                     >
                                         {t === 'all' ? 'Everyone' : 'Single User'}
@@ -957,12 +954,12 @@ const AdminDashboard: React.FC = () => {
                         </div>
                         {newNotif.target_type === 'user' && (
                             <div className="space-y-1">
-                                <label className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest ml-2">Target User Email</label>
+                                <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Target User Email</label>
                                 <input 
                                     type="email" placeholder="user@example.com"
                                     value={newNotif.target_user_email}
                                     onChange={e => setNewNotif({...newNotif, target_user_email: e.target.value})}
-                                    className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white"
+                                    className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
                                 />
                             </div>
                         )}
@@ -976,34 +973,34 @@ const AdminDashboard: React.FC = () => {
                                 fetchData();
                             } catch (err) { showMsg('error', 'Send failed'); }
                         }}
-                        className="bg-gray-900 dark:bg-white text-white dark:text-black px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-red-600 dark:hover:bg-red-600 hover:text-white transition-all shadow-2xl flex items-center gap-2"
+                        className="bg-white text-black px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-red-600 hover:text-white transition-all shadow-2xl flex items-center gap-2"
                     >
                         <Send size={16} /> Dispatch Message
                     </button>
                 </div>
 
                 <div className="space-y-6">
-                    <h2 className="text-xl md:text-2xl font-serif italic text-gray-900 dark:text-white">Notification History</h2>
+                    <h2 className="text-xl md:text-2xl font-serif italic text-white">Notification History</h2>
                     <div className="space-y-4">
-                        {notifications.map(n => (
-                            <div key={n.id} className="bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 p-6 rounded-2xl flex items-center gap-6 shadow-sm">
-                                <div className={`p-3 rounded-2xl bg-gray-100 dark:bg-white/5 shadow-inner`}>
-                                    <Bell size={24} className="text-gray-400 dark:text-white/40" />
+                        {notifications.map((n, idx) => (
+                            <div key={n.id} className="bg-[#0D0D0E] border border-white/5 p-6 rounded-2xl flex items-center gap-6 shadow-sm hover:border-white/10 transition-all">
+                                <div className="p-3 rounded-2xl bg-white/5 shadow-inner">
+                                    <Bell size={24} className="text-white/40" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className={`px-2 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-widest ${
-                                            n.type === 'error' ? 'bg-red-500 text-white' :
-                                            n.type === 'success' ? 'bg-green-500 text-white' :
-                                            n.type === 'warning' ? 'bg-yellow-500 text-white' : 'bg-blue-500 text-white'
+                                            n.type === 'error' ? 'bg-red-500/20 text-red-500 border border-red-500/30' :
+                                            n.type === 'success' ? 'bg-green-500/20 text-green-500 border border-green-500/30' :
+                                            n.type === 'warning' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' : 'bg-blue-500/20 text-blue-500 border border-blue-500/30'
                                         }`}>
                                             {n.type}
                                         </span>
-                                        <p className="text-[10px] text-gray-400 dark:text-white/20 font-bold uppercase tracking-widest">{new Date(n.created_at).toLocaleString()}</p>
+                                        <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest">{new Date(n.created_at).toLocaleString()}</p>
                                     </div>
-                                    <h4 className="font-bold text-gray-900 dark:text-white">{n.title}</h4>
-                                    <p className="text-xs text-gray-600 dark:text-white/60 line-clamp-1">{n.message}</p>
-                                    <p className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase mt-1 tracking-widest">
+                                    <h4 className="font-bold text-white">{n.title}</h4>
+                                    <p className="text-xs text-white/60 line-clamp-1">{n.message}</p>
+                                    <p className="text-[10px] text-white/20 font-black uppercase mt-1 tracking-widest">
                                         Audience: {n.target_type} {n.target_user_email && `(${n.target_user_email})`}
                                     </p>
                                 </div>
@@ -1015,7 +1012,7 @@ const AdminDashboard: React.FC = () => {
                                             fetchData();
                                         } catch (err) { showMsg('error', 'Delete failed'); }
                                     }}
-                                    className="p-3 hover:bg-red-600/20 text-gray-400 dark:text-white/40 hover:text-red-500 rounded-xl transition-all"
+                                    className="p-3 hover:bg-red-600/20 text-white/40 hover:text-red-500 rounded-xl transition-all"
                                 >
                                     <Trash2 size={20} />
                                 </button>
@@ -1029,44 +1026,44 @@ const AdminDashboard: React.FC = () => {
           {activeTab === 'users' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl md:text-2xl font-serif italic text-gray-900 dark:text-white">User Directory</h2>
+                <h2 className="text-xl md:text-2xl font-serif italic text-white">User Directory</h2>
               </div>
-              <div className="bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-xl overflow-x-auto shadow-sm">
+              <div className="bg-[#0D0D0E] border border-white/5 rounded-xl overflow-x-auto shadow-sm">
                 <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
-                    <tr className="bg-gray-100 dark:bg-white/5 border-b border-gray-100 dark:border-white/5 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">
+                    <tr className="bg-white/5 border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-white/40">
                       <th className="px-4 md:px-6 py-4">User</th>
                       <th className="px-4 md:px-6 py-4">Status</th>
                       <th className="px-4 md:px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="text-gray-700 dark:text-[#E1E1E1]">
+                  <tbody className="text-gray-700 text-[#E1E1E1]">
                     {users.map((user) => (
-                      <tr key={user.email} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-200/50 dark:hover:bg-white/[0.02]">
+                      <tr key={user.email} className="border-b border-white/5 hover:bg-gray-200/50 hover:bg-white/[0.02]">
                         <td className="px-4 md:px-6 py-4">
                           <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</span>
-                            <span className="text-[10px] text-gray-400 dark:text-white/40 uppercase tracking-tighter">Joined {new Date(user.created_at).toLocaleDateString()}</span>
+                            <span className="text-sm font-medium text-white">{user.email}</span>
+                            <span className="text-[10px] text-white/40 uppercase tracking-tighter">Joined {new Date(user.created_at).toLocaleDateString()}</span>
                           </div>
                         </td>
                         <td className="px-4 md:px-6 py-4">
                           <div className="flex flex-wrap gap-2">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${user.is_admin ? 'bg-red-600/10 text-red-500' : 'bg-gray-200 dark:bg-white/5 text-gray-400 dark:text-white/40'}`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${user.is_admin ? 'bg-red-600/10 text-red-500' : 'bg-white/5 text-white/40'}`}>
                               {user.is_admin ? 'Admin' : 'User'}
                             </span>
                             {user.is_premium ? (
                               <div className="flex flex-col">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 w-fit">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-yellow-500/10 text-yellow-600 text-yellow-500 w-fit">
                                   Premium VIP
                                 </span>
                                 {user.premium_expiry && (
-                                  <span className="text-[9px] text-gray-400 dark:text-white/20 font-medium uppercase tracking-tight mt-0.5">
+                                  <span className="text-[9px] text-white/20 font-medium uppercase tracking-tight mt-0.5">
                                     Expires {new Date(user.premium_expiry).toLocaleDateString()}
                                   </span>
                                 )}
                               </div>
                             ) : (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-200/50 dark:bg-white/5 text-gray-300 dark:text-white/20 opacity-50">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-200/50 bg-white/5 text-gray-300 text-white/20 opacity-50">
                                 Standard
                               </span>
                             )}
@@ -1082,8 +1079,8 @@ const AdminDashboard: React.FC = () => {
                               Discontinue
                             </button>
                           ) : (
-                            <div className="flex items-center bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/5 group hover:border-yellow-500/30 transition-colors">
-                               <div className="pl-3 pr-1 text-yellow-600 dark:text-yellow-500/60 group-hover:text-yellow-500 transition-colors">
+                            <div className="flex items-center bg-white/5 rounded-lg border border-gray-200 border-white/5 group hover:border-yellow-500/30 transition-colors">
+                               <div className="pl-3 pr-1 text-yellow-600 text-yellow-500/60 group-hover:text-yellow-500 transition-colors">
                                  <DollarSign size={12} />
                                </div>
                                <select 
@@ -1093,20 +1090,20 @@ const AdminDashboard: React.FC = () => {
                                         e.target.value = '';
                                     }
                                   }}
-                                  className="bg-transparent text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40 focus:text-gray-900 dark:focus:text-white focus:outline-none py-2 pr-3 cursor-pointer appearance-none outline-none"
+                                  className="bg-transparent text-[10px] font-bold uppercase tracking-widest text-white/40 focus:text-gray-900 focus:text-white focus:outline-none py-2 pr-3 cursor-pointer appearance-none outline-none"
                                >
-                                  <option value="" className="bg-white dark:bg-[#111113] text-gray-900 dark:text-white">Grant VIP</option>
+                                  <option value="" className="bg-white bg-[#111113] text-white">Grant VIP</option>
                                   {GRANT_DURATIONS.map(d => (
-                                      <option key={d.value} value={d.value} className="bg-white dark:bg-[#111113] text-gray-900 dark:text-white">{d.label}</option>
+                                      <option key={d.value} value={d.value} className="bg-white bg-[#111113] text-white">{d.label}</option>
                                   ))}
                                </select>
                             </div>
                           )}
                           
-                          <div className="flex items-center gap-1 text-gray-400 dark:text-white/40">
+                          <div className="flex items-center gap-1 text-white/40">
                             <button 
                               onClick={() => handlePromote(user.email, user.is_admin)}
-                              className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white rounded-lg transition-all"
+                              className="p-2 hover:bg-white/10 hover:text-gray-900 hover:text-white rounded-lg transition-all"
                               title={user.is_admin ? "Demote" : "Promote"}
                             >
                                <ShieldCheck size={16} />
@@ -1130,9 +1127,9 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'content' && (
             <div className="space-y-8 md:space-y-12">
-              <div className="space-y-6 bg-gray-50 dark:bg-[#0D0D0E] p-6 md:p-8 border border-gray-100 dark:border-white/5 rounded-2xl shadow-sm">
+              <div className="space-y-6 bg-[#0D0D0E] p-6 md:p-8 border border-white/5 rounded-2xl shadow-sm">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-serif italic text-gray-900 dark:text-white">{newOverride.id ? 'Edit Override' : 'Global Overrides'}</h2>
+                  <h2 className="text-xl font-serif italic text-white">{newOverride.id ? 'Edit Override' : 'Global Overrides'}</h2>
                   {newOverride.id && (
                     <button 
                       onClick={() => setNewOverride({
@@ -1148,7 +1145,7 @@ const AdminDashboard: React.FC = () => {
                         custom_overview: '',
                         title: ''
                       })}
-                      className="text-[10px] text-gray-400 dark:text-white/40 hover:text-gray-900 dark:hover:text-white uppercase tracking-widest font-bold"
+                      className="text-[10px] text-white/40 hover:text-gray-900 hover:text-white uppercase tracking-widest font-bold"
                     >
                       Clear / New
                     </button>
@@ -1156,31 +1153,31 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="col-span-2 md:col-span-3 space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">Title (Optional)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Title (Optional)</label>
                     <input 
                       type="text" 
                       value={newOverride.title || ''}
                       onChange={(e) => setNewOverride({...newOverride, title: e.target.value})}
-                      className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-gray-900 dark:text-white"
+                      className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-white"
                       placeholder="Display Title Override"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">TMDB ID</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">TMDB ID</label>
                     <input 
                       type="number" 
                       value={newOverride.tmdb_id}
                       onChange={(e) => setNewOverride({...newOverride, tmdb_id: e.target.value})}
-                      className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-gray-900 dark:text-white"
+                      className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-white"
                       placeholder="e.g. 550"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">Type</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Type</label>
                     <select 
                       value={newOverride.media_type}
                       onChange={(e) => setNewOverride({...newOverride, media_type: e.target.value})}
-                      className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-gray-900 dark:text-white"
+                      className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-white"
                     >
                       <option value="movie">Movie</option>
                       <option value="tv">TV Show</option>
@@ -1189,52 +1186,52 @@ const AdminDashboard: React.FC = () => {
                   {newOverride.media_type === 'tv' && (
                     <>
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">Season</label>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Season</label>
                         <input 
                           type="number" 
                           value={newOverride.season_number}
                           onChange={(e) => setNewOverride({...newOverride, season_number: e.target.value})}
-                          className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-gray-900 dark:text-white"
+                          className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-white"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">Episode</label>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Episode</label>
                         <input 
                           type="number" 
                           value={newOverride.episode_number}
                           onChange={(e) => setNewOverride({...newOverride, episode_number: e.target.value})}
-                          className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-gray-900 dark:text-white"
+                          className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-white"
                         />
                       </div>
                     </>
                   )}
                   <div className="col-span-2 md:col-span-4 space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">Source Video URL</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Source Video URL</label>
                     <input 
                       type="text" 
                       value={newOverride.video_url}
                       onChange={(e) => setNewOverride({...newOverride, video_url: e.target.value})}
-                      className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-gray-900 dark:text-white"
+                      className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-white"
                       placeholder="https://..."
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">Intro Start (s)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Intro Start (s)</label>
                     <input 
                       type="number" 
                       value={newOverride.intro_start}
                       onChange={(e) => setNewOverride({...newOverride, intro_start: e.target.value})}
-                      className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-gray-900 dark:text-white"
+                      className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-white"
                       placeholder="5"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">Intro End (s)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Intro End (s)</label>
                     <input 
                       type="number" 
                       value={newOverride.intro_end}
                       onChange={(e) => setNewOverride({...newOverride, intro_end: e.target.value})}
-                      className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-gray-900 dark:text-white"
+                      className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-white"
                       placeholder="85"
                     />
                   </div>
@@ -1248,21 +1245,21 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               <div className="space-y-6">
-                <h2 className="text-xl md:text-2xl font-serif italic uppercase text-gray-900 dark:text-white">Active Vault</h2>
+                <h2 className="text-xl md:text-2xl font-serif italic uppercase text-white">Active Vault</h2>
                 <div className="grid grid-cols-1 gap-4">
                   {overrides.map(ov => (
-                    <div key={ov.id} className="p-4 md:p-6 bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-xl flex items-center gap-4 shadow-sm">
-                      <div className="w-10 h-10 md:w-12 md:h-12 flex-shrink-0 bg-gray-200 dark:bg-white/5 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/20">
+                    <div key={ov.id} className="p-4 md:p-6 bg-[#0D0D0E] border border-white/5 rounded-xl flex items-center gap-4 shadow-sm">
+                      <div className="w-10 h-10 md:w-12 md:h-12 flex-shrink-0 bg-white/5 rounded-lg flex items-center justify-center text-white/20">
                         <Film size={20} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-0.5">
                           {ov.media_type} {ov.season_number && `S${ov.season_number}`} {ov.episode_number && `E${ov.episode_number}`}
                         </p>
-                        <h4 className="text-sm font-bold truncate text-gray-900 dark:text-white">{ov.title || `TMDB ${ov.tmdb_id}`}</h4>
-                        <p className="text-[10px] text-gray-400 dark:text-white/40 font-mono truncate">{ov.video_url}</p>
+                        <h4 className="text-sm font-bold truncate text-white">{ov.title || `TMDB ${ov.tmdb_id}`}</h4>
+                        <p className="text-[10px] text-white/40 font-mono truncate">{ov.video_url}</p>
                       </div>
-                      <div className="flex gap-1 text-gray-400 dark:text-white/40">
+                      <div className="flex gap-1 text-white/40">
                         <button 
                           onClick={() => handleDuplicateOverride(ov)}
                           className="p-2 hover:text-green-500 hover:bg-green-500/10 rounded-lg transition-all"
@@ -1294,26 +1291,26 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'settings' && (
             <div className="space-y-8 md:space-y-12">
-              <div className="space-y-6 bg-gray-50 dark:bg-[#0D0D0E] p-6 md:p-8 border border-gray-100 dark:border-white/5 rounded-2xl shadow-sm">
-                <h2 className="text-xl font-serif italic font-light text-gray-900 dark:text-white">Global Registry</h2>
+              <div className="space-y-6 bg-[#0D0D0E] p-6 md:p-8 border border-white/5 rounded-2xl shadow-sm">
+                <h2 className="text-xl font-serif italic font-light text-white">Global Registry</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <h3 className="text-xs uppercase tracking-widest text-gray-400 dark:text-[#E5E5E5]/40 font-bold">Fast Config</h3>
+                    <h3 className="text-xs uppercase tracking-widest text-gray-400 text-[#E5E5E5]/40 font-bold">Fast Config</h3>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl">
-                        <span className="text-xs uppercase tracking-widest font-bold text-gray-900 dark:text-white">Premium Price</span>
+                      <div className="flex items-center justify-between p-4 bg-white bg-white/5 border border-white/10 rounded-xl">
+                        <span className="text-xs uppercase tracking-widest font-bold text-white">Premium Price</span>
                         <input 
                           type="text" 
                           placeholder="9.99"
-                          className="bg-transparent text-right border-b border-gray-200 dark:border-white/10 outline-none focus:border-red-600 transition-all text-red-500 font-bold"
+                          className="bg-transparent text-right border-b border-white/10 outline-none focus:border-red-600 transition-all text-red-500 font-bold"
                           onChange={(e) => setNewSetting({ key: 'premium_price_monthly', value: e.target.value })}
                         />
                       </div>
-                      <div className="flex flex-col gap-2 p-4 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl">
-                        <span className="text-xs uppercase tracking-widest font-bold text-gray-900 dark:text-white">Payment Info</span>
+                      <div className="flex flex-col gap-2 p-4 bg-white bg-white/5 border border-white/10 rounded-xl">
+                        <span className="text-xs uppercase tracking-widest font-bold text-white">Payment Info</span>
                         <textarea 
                           placeholder="PayPal: admin@example.com"
-                          className="bg-transparent border-b border-gray-200 dark:border-white/10 outline-none focus:border-red-600 transition-all text-gray-600 dark:text-white/60 text-sm h-20"
+                          className="bg-transparent border-b border-white/10 outline-none focus:border-red-600 transition-all text-gray-600 text-white/60 text-sm h-20"
                           onChange={(e) => setNewSetting({ key: 'payment_info', value: e.target.value })}
                         />
                       </div>
@@ -1321,24 +1318,24 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   
                   <div className="space-y-4">
-                    <h3 className="text-xs uppercase tracking-widest text-gray-400 dark:text-[#E5E5E5]/40 font-bold">Custom Entry</h3>
+                    <h3 className="text-xs uppercase tracking-widest text-gray-400 text-[#E5E5E5]/40 font-bold">Custom Entry</h3>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">Key</label>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Key</label>
                         <input 
                           type="text" 
                           value={newSetting.key}
                           onChange={(e) => setNewSetting({...newSetting, key: e.target.value})}
-                          className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-gray-900 dark:text-white"
+                          className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-white"
                           placeholder="TMDB_API_KEY"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40">Value</label>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Value</label>
                         <textarea 
                           value={newSetting.value}
                           onChange={(e) => setNewSetting({...newSetting, value: e.target.value})}
-                          className="w-full bg-white dark:bg-[#0A0A0B] border border-gray-200 dark:border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm h-24 text-gray-900 dark:text-white"
+                          className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm h-24 text-white"
                         />
                       </div>
                     </div>
@@ -1346,21 +1343,21 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <button 
                   onClick={handleSaveSetting}
-                  className="w-full md:w-auto px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-black rounded-lg text-xs md:text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all shadow-xl"
+                  className="w-full md:w-auto px-8 py-3 bg-white text-black rounded-lg text-xs md:text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all shadow-xl"
                 >
                   <Save size={18} /> Persist Config
                 </button>
               </div>
 
               <div className="space-y-6">
-                <h2 className="text-xl md:text-2xl font-serif italic uppercase text-gray-900 dark:text-white">Current Config</h2>
+                <h2 className="text-xl md:text-2xl font-serif italic uppercase text-white">Current Config</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {settings.map(s => (
-                    <div key={s.setting_key} className="p-4 md:p-6 bg-gray-50 dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-xl group relative overflow-hidden shadow-sm">
+                    <div key={s.setting_key} className="p-4 md:p-6 bg-[#0D0D0E] border border-white/5 rounded-xl group relative overflow-hidden shadow-sm">
                       <div className="relative z-10">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-white/40 mb-1">Key</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Key</p>
                         <h4 className="font-mono text-xs md:text-sm text-red-500 truncate">{s.setting_key}</h4>
-                        <p className="text-[10px] text-gray-400 dark:text-white/20 mt-2">v{new Date(s.updated_at).getTime()}</p>
+                        <p className="text-[10px] text-white/20 mt-2">v{new Date(s.updated_at).getTime()}</p>
                       </div>
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-green-500/10 text-green-500 rounded text-[10px] font-bold uppercase hidden md:block">
                         Active

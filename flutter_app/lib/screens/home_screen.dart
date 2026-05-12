@@ -152,16 +152,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const SizedBox(height: 40),
                     GestureDetector(
-                      onTap: () => setState(() => _isSidebarCollapsed = true),
+                      onTap: () => setState(() => _selectedIndex = 0),
                       child: Container(
-                        width: 40,
-                        height: 40,
+                        width: 48,
+                        height: 48,
+                        margin: const EdgeInsets.symmetric(vertical: 20),
                         decoration: BoxDecoration(
                           color: Colors.red[600],
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red[600]!.withOpacity(0.3),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
                         alignment: Alignment.center,
-                        child: const Text('C', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'C', 
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 60),
@@ -323,15 +338,53 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavIcon(IconData icon, int index) {
     bool active = _selectedIndex == index;
-    return IconButton(
-      icon: Icon(icon, color: active ? Colors.white : Colors.white24, size: 20),
-      onPressed: () {
-        setState(() {
-          _selectedIndex = index;
-          _isSidebarCollapsed = true;
-        });
-      },
-      padding: const EdgeInsets.symmetric(vertical: 12),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (active)
+            Container(
+              width: 45,
+              height: 45,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red[600]!.withOpacity(0.15),
+                    blurRadius: 15,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+          IconButton(
+            icon: Icon(
+              icon, 
+              color: active ? Colors.red[600] : Colors.white24, 
+              size: 22,
+            ),
+            onPressed: () {
+              setState(() {
+                _selectedIndex = index;
+                _isSidebarCollapsed = true;
+              });
+            },
+          ),
+          if (active)
+            Positioned(
+              left: 0,
+              child: Container(
+                width: 3,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.red[600],
+                  borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -434,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: GoogleFonts.playfairDisplay(fontSize: 22, fontStyle: FontStyle.italic)),
+            Text(title, style: GoogleFonts.manrope(fontSize: 22, )),
             const SizedBox(height: 15),
             SizedBox(
               height: 250,
@@ -520,9 +573,9 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 40),
             Text(
               'CINODE',
-              style: GoogleFonts.playfairDisplay(
+              style: GoogleFonts.manrope(
                 fontSize: 48,
-                fontStyle: FontStyle.italic,
+                
                 fontWeight: FontWeight.w300,
               ),
             ),

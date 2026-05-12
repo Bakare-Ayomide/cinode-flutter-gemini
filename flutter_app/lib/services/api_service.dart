@@ -245,6 +245,27 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>?> uploadProof({
+    required File imageFile,
+  }) async {
+    try {
+      String fileName = imageFile.path.split('/').last;
+      FormData formData = FormData.fromMap({
+        'proof': await MultipartFile.fromFile(imageFile.path, filename: fileName),
+      });
+
+      final response = await _dio.post(
+        '/checkout/upload-proof',
+        data: formData,
+      );
+      
+      return response.data;
+    } catch (e) {
+      print('Upload proof error: $e');
+      return null;
+    }
+  }
+
   Future<List<dynamic>> getUserPayments(String email) async {
     try {
       final response = await _dio.get(
@@ -496,9 +517,26 @@ class ApiService {
   Future<void> promoteAdmin(String email, String userEmail, bool isAdmin) async {
     await _dio.post(
       '/admin/users/promote',
-      data: {'email': userEmail, 'isAdmin': isAdmin},
+      data: {'email': userEmail, 'is_admin': isAdmin},
       options: Options(headers: {'x-user-email': email}),
     );
+  }
+
+  Future<void> revokePremium(String email, String userEmail) async {
+    await _dio.post(
+      '/admin/users/revoke-premium',
+      data: {'email': userEmail},
+      options: Options(headers: {'x-user-email': email}),
+    );
+  }
+
+  Future<Map<String, dynamic>?> extractInfo(String imageUrl) async {
+    try {
+      final response = await _dio.post('/checkout/extract-info', data: {'image_url': imageUrl});
+      return response.data;
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<List<dynamic>> getAdminOverrides(String email) async {
@@ -526,6 +564,19 @@ class ApiService {
       '/admin/overrides/$id',
       options: Options(headers: {'x-user-email': email}),
     );
+  }
+
+  Future<void> updateUserSettings(String email, Map<String, dynamic> settings) async {
+    try {
+      await _dio.post(
+        '/user/settings',
+        data: {'settings': settings},
+        options: Options(headers: {'x-user-email': email}),
+      );
+    } catch (e) {
+      print('Update settings error: $e');
+      rethrow;
+    }
   }
 
   Future<List<Movie>> search(String query) async {

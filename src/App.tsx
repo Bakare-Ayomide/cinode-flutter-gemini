@@ -750,18 +750,18 @@ export default function App() {
                animate={{ opacity: 1 }}
                exit={{ opacity: 0 }}
                onClick={() => setSelectedMovie(null)}
-               className="absolute inset-0 bg-white/90 dark:bg-black/95 backdrop-blur-md"
+               className="absolute inset-0 bg-white/90 bg-black/95 backdrop-blur-md"
             />
             
             <motion.div 
               initial={{ scale: 0.98, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.98, opacity: 0 }}
-              className="relative w-full h-full bg-white dark:bg-[#0A0A0B] flex flex-col md:flex-row overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.1)] dark:shadow-[0_0_100px_rgba(0,0,0,1)]"
+              className="relative w-full h-full bg-[#0A0A0B] flex flex-col md:flex-row overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.1)] shadow-[0_0_100px_rgba(0,0,0,1)]"
             >
               <button 
                 onClick={() => setSelectedMovie(null)}
-                className="absolute right-8 top-8 z-50 p-3 bg-gray-100 dark:bg-white/5 hover:bg-red-600 rounded-full transition-all hover:scale-110 text-gray-900 dark:text-white"
+                className="absolute right-8 top-8 z-50 p-3 bg-white/5 hover:bg-red-600 rounded-full transition-all hover:scale-110 text-white"
                >
                 <X size={24} />
               </button>
@@ -770,24 +770,24 @@ export default function App() {
               <div className="flex-1 overflow-y-auto no-scrollbar pt-6 md:pt-0">
                 <div className="h-[300px] md:h-[60vh] w-full relative">
                   <img src={BACKDROP_BASE + selectedMovie.backdrop_path} className="w-full h-full object-cover" alt="" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-[#0A0A0B] via-transparent to-transparent" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-white dark:from-[#0A0A0B] via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0B] via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0B] via-transparent to-transparent" />
                 </div>
                 
                 <div className="px-6 md:px-20 -mt-20 md:-mt-32 relative space-y-10 md:space-y-20 pb-32">
                    <div className="space-y-6 md:space-y-10">
                         <div className="flex items-center gap-3">
-                            <span className="px-2 py-0.5 bg-gray-900/10 dark:bg-white/10 rounded text-[8px] md:text-[10px] uppercase tracking-widest font-bold text-gray-900 dark:text-white">Details</span>
-                            <span className="text-[10px] md:text-xs text-gray-400 dark:text-white/40">{(selectedMovie.release_date || selectedMovie.first_air_date) ? new Date(selectedMovie.release_date || selectedMovie.first_air_date || '').getFullYear() : 'N/A'} • {movieDetails?.runtime || '0'} MIN</span>
+                            <span className="px-2 py-0.5 bg-gray-900/10 bg-white/10 rounded text-[8px] md:text-[10px] uppercase tracking-widest font-bold text-white">Details</span>
+                            <span className="text-[10px] md:text-xs text-white/40">{(selectedMovie.release_date || selectedMovie.first_air_date) ? new Date(selectedMovie.release_date || selectedMovie.first_air_date || '').getFullYear() : 'N/A'} • {movieDetails?.runtime || '0'} MIN</span>
                         </div>
-                        <h2 className="text-2xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tighter leading-tight lg:leading-[1] uppercase max-w-4xl text-gray-900 dark:text-white">
+                        <h2 className="text-2xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tighter leading-tight lg:leading-[1] uppercase max-w-4xl text-white">
                             {selectedMovie.title || selectedMovie.name}
                         </h2>
                         
                         <div className="flex flex-wrap items-center gap-3 md:gap-8">
                             <button 
                                 onClick={() => setPlayingMovie(selectedMovie)}
-                                className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-gray-900 dark:bg-white text-white dark:text-black font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs hover:bg-red-600 hover:text-white transition-all active:scale-95"
+                                className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-red-600 text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs hover:bg-white hover:text-black transition-all active:scale-95 shadow-lg shadow-red-600/20"
                             >
                                 Play Film
                             </button>
@@ -799,52 +799,52 @@ export default function App() {
                                         setShowCheckout(true);
                                     }
                                 }}
-                                className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-[11px] flex items-center justify-center gap-2 md:gap-3 transition-all hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 active:scale-95"
+                                className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-white/5 text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-[11px] flex items-center justify-center gap-2 md:gap-3 transition-all hover:bg-white/10 border border-white/10 active:scale-95"
                             >
                                 <Download size={14} className="md:w-4 md:h-4" /> {isPremium ? 'Download' : 'Download'}
                             </button>
                             <button 
                                 onClick={(e) => toggleWatchlist(e, selectedMovie)}
-                                className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 border border-gray-300 dark:border-white/20 font-bold uppercase tracking-[0.2em] text-[10px] md:text-[11px] backdrop-blur-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-all text-center text-gray-900 dark:text-white"
+                                className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 border border-white/20 font-bold uppercase tracking-[0.2em] text-[10px] md:text-[11px] backdrop-blur-sm hover:bg-white/5 transition-all text-center text-white"
                             >
                                 {watchlist.some(w => w.movie_id === selectedMovie?.id) ? 'Saved' : '+ List'}
                             </button>
                         </div>
 
-                        <div className="grid md:grid-cols-12 gap-8 md:gap-12 pt-8 md:pt-10 border-t border-gray-100 dark:border-white/5">
+                        <div className="grid md:grid-cols-12 gap-8 md:gap-12 pt-8 md:pt-10 border-t border-white/5">
                             <div className="md:col-span-8 space-y-6 md:space-y-8">
-                                <p className="text-gray-600 dark:text-[#E5E5E5]/70 text-sm md:text-base lg:text-lg font-light leading-relaxed font-serif">
+                                <p className="text-gray-600 text-[#E5E5E5]/70 text-sm md:text-base lg:text-lg font-light leading-relaxed font-serif">
                                     {selectedMovie.overview}
                                 </p>
                                 
                                 <div className="space-y-6 md:space-y-8">
-                                    <h3 className="text-[10px] md:text-xs uppercase tracking-[0.3em] font-bold text-gray-400 dark:text-white/40">Cast</h3>
+                                    <h3 className="text-[10px] md:text-xs uppercase tracking-[0.3em] font-bold text-white/40">Cast</h3>
                                     <div className="flex flex-wrap gap-2 md:gap-4">
                                         {movieDetails?.credits?.cast?.slice(0, 6).map(c => (
-                                            <div key={c.id} className="flex items-center gap-2 md:gap-3 bg-gray-50 dark:bg-white/5 pr-3 md:pr-4 rounded-full border border-gray-100 dark:border-white/5">
-                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden bg-gray-200 dark:bg-zinc-800">
+                                            <div key={c.id} className="flex items-center gap-2 md:gap-3 bg-white/5 pr-3 md:pr-4 rounded-full border border-white/5">
+                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden bg-gray-200 bg-zinc-800">
                                                     {c.profile_path && <img src={IMAGE_BASE + c.profile_path} className="w-full h-full object-cover" />}
                                                 </div>
-                                                <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-gray-900 dark:text-white">{c.name}</span>
+                                                <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-white">{c.name}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             </div>
                             
-                            <div className="md:col-span-4 space-y-6 md:space-y-10 border-t md:border-t-0 md:border-l border-gray-100 dark:border-white/5 pt-8 md:pt-0 md:pl-12">
+                            <div className="md:col-span-4 space-y-6 md:space-y-10 border-t md:border-t-0 md:border-l border-white/5 pt-8 md:pt-0 md:pl-12">
                                 <div>
-                                    <div className="text-[10px] md:text-xs uppercase tracking-widest text-gray-400 dark:text-white/40 mb-3 md:mb-4">Genre</div>
+                                    <div className="text-[10px] md:text-xs uppercase tracking-widest text-white/40 mb-3 md:mb-4">Genre</div>
                                     <div className="flex flex-wrap gap-2">
                                         {movieDetails?.genres.map(g => (
-                                            <span key={g.id} className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest bg-gray-50 dark:bg-white/5 px-2 md:px-3 py-1 rounded text-gray-900 dark:text-white">{g.name}</span>
+                                            <span key={g.id} className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest bg-white/5 px-2 md:px-3 py-1 rounded text-white">{g.name}</span>
                                         ))}
                                     </div>
                                 </div>
                                 {movieDetails?.production_countries[0] && (
                                     <div>
-                                        <div className="text-[10px] md:text-xs uppercase tracking-widest text-gray-400 dark:text-white/40 mb-2">Production</div>
-                                        <div className="text-lg md:text-2xl font-serif font-light text-gray-900 dark:text-white">{movieDetails.production_countries[0].name}</div>
+                                        <div className="text-[10px] md:text-xs uppercase tracking-widest text-white/40 mb-2">Production</div>
+                                        <div className="text-lg md:text-2xl font-serif font-light text-white">{movieDetails.production_countries[0].name}</div>
                                     </div>
                                 )}
                             </div>
@@ -920,16 +920,16 @@ export default function App() {
                     initial={{ opacity: 0, scale: 0.9, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                    className="relative w-full max-w-sm bg-white dark:bg-[#0A0A0B] rounded-3xl border border-gray-100 dark:border-white/5 shadow-2xl overflow-hidden flex flex-col"
+                    className="relative w-full max-w-sm bg-[#0A0A0B] rounded-3xl border border-white/5 shadow-2xl overflow-hidden flex flex-col"
                 >
-                    <div className="p-4 border-b border-gray-100 dark:border-white/5 flex items-center justify-between bg-gray-50 dark:bg-white/[0.02] text-gray-900 dark:text-white">
+                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-white">
                         <div>
                             <h2 className="text-xs font-black uppercase tracking-[0.2em] italic font-serif">Premium Marketplace</h2>
-                            <p className="text-[7px] text-gray-400 dark:text-white/20 font-black uppercase tracking-[0.3em] mt-0.5">Secure Transaction Portal</p>
+                            <p className="text-[7px] text-white/20 font-black uppercase tracking-[0.3em] mt-0.5">Secure Transaction Portal</p>
                         </div>
                         <button 
                             onClick={() => setShowCheckout(false)}
-                            className="p-1 px-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-400 dark:text-white/20 hover:text-red-500 transition-all flex items-center gap-1"
+                            className="p-1 px-2 hover:bg-white/10 rounded-lg text-white/20 hover:text-red-500 transition-all flex items-center gap-1"
                         >
                             <span className="text-[8px] font-black uppercase tracking-widest">Close</span>
                             <X size={14} />

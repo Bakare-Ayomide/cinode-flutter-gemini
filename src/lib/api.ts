@@ -3,14 +3,22 @@ import { Movie, MovieDetails, Review, WatchlistItem } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
+  timeout: 30000, // 30 seconds to handle slow DB/cloud responses
 });
 
-// Add error interceptor
+// Add error interceptor with better logging
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.error || error.message;
-    console.error("API Error:", message);
+    let message = "Network Error";
+    if (error.response) {
+      message = error.response.data?.error || error.response.data?.message || `Status ${error.response.status}`;
+    } else if (error.request) {
+      message = "Server is unresponsive. Please check your connection.";
+    } else {
+      message = error.message;
+    }
+    console.error("Frontend API Error:", message);
     return Promise.reject(new Error(message));
   }
 );
@@ -56,6 +64,12 @@ export const movieApi = {
   getCheckoutConfig: () => api.get('/checkout/config').then(res => res.data),
   submitCheckout: (data: any) => api.post('/checkout/submit', data).then(res => res.data),
   getUserPayments: () => api.get('/user/payments').then(res => res.data),
+  uploadProof: (formData: FormData) => api.post('/checkout/upload-proof', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data' 
+    }
+  }).then(res => res.data),
+  extractInfo: (imageUrl: string) => api.post('/checkout/extract-info', { image_url: imageUrl }).then(res => res.data),
   // Affiliates
   getAffiliateDashboard: () => api.get('/affiliate/dashboard').then(res => res.data),
   // Ads
@@ -83,4 +97,5 @@ export const movieApi = {
   deleteAdminNotification: (id: number) => api.delete(`/admin/notifications/${id}`),
   grantPremium: (email: string, duration: string) => api.post('/admin/users/grant-premium', { email, duration }),
   revokePremium: (email: string) => api.post('/admin/users/revoke-premium', { email }),
+  updateUserSettings: (settings: any) => api.post('/user/settings', { settings }),
 };

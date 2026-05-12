@@ -75,9 +75,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         children: [
           Text(
             'CONTROL CENTER',
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.manrope(
               fontSize: 64,
-              fontStyle: FontStyle.italic,
+              
               fontWeight: FontWeight.w300,
               color: Colors.white,
             ),
@@ -170,6 +170,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const PopupMenuItem(value: 'grant_6m', child: Text('Grant 6 Months Premium')),
               const PopupMenuItem(value: 'grant_1y', child: Text('Grant 1 Year Premium')),
               const PopupMenuDivider(),
+              if (user['is_premium'] == 1)
+                const PopupMenuItem(value: 'revoke', child: Text('Discontinue Premium', style: TextStyle(color: Colors.orange))),
               PopupMenuItem(value: 'toggle_admin', child: Text(user['is_admin'] == 1 ? 'Demote Admin' : 'Promote Admin')),
               const PopupMenuItem(value: 'delete', child: Text('Delete User', style: TextStyle(color: Colors.red))),
             ],
@@ -188,6 +190,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         final duration = action.split('_')[1];
         await api.grantPremium(adminEmail, userEmail, duration);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Premium granted')));
+      } else if (action == 'revoke') {
+        await api.revokePremium(adminEmail, userEmail);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Premium revoked')));
       } else if (action == 'toggle_admin') {
         await api.promoteAdmin(adminEmail, userEmail, !currentIsAdmin);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Admin status toggled')));
@@ -437,7 +442,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           children: [
             Text(
               _selectedOverride == null ? 'SECURE NEW OVERRIDE' : 'MODIFY OVERRIDE',
-              style: GoogleFonts.playfairDisplay(fontSize: 24, fontStyle: FontStyle.italic),
+              style: GoogleFonts.manrope(fontSize: 24, ),
             ),
             const SizedBox(height: 30),
             TextField(
