@@ -109,6 +109,112 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
+  void _showNotificationDetail(Map<String, dynamic> n) {
+    if (n['is_read'] == 0) _markRead(n['id']);
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Color(0xFF0D0D0E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.security, color: Colors.redAccent, size: 20),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('SIGNAL INTERCEPT', style: GoogleFonts.manrope(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.black, color: Colors.white38)),
+                            Text('PRIORITY: ${n['type']?.toString().toUpperCase()}', style: GoogleFonts.manrope(fontSize: 7, letterSpacing: 1, fontWeight: FontWeight.black, color: Colors.white10)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    Text(
+                      n['title'].toString().toUpperCase(),
+                      style: GoogleFonts.manrope(
+                        fontSize: 24,
+                        fontWeight: FontWeight.black,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Container(width: 20, height: 1, color: Colors.white10),
+                        const SizedBox(width: 12),
+                        Text(
+                          n['created_at'].toString().replaceFirst('T', ' ').split('.')[0],
+                          style: GoogleFonts.manrope(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.black, letterSpacing: 1),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 48),
+                    Text(
+                      n['message'],
+                      style: GoogleFonts.manrope(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        height: 1.8,
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                    const SizedBox(height: 100),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: SizedBox(
+                width: double.infinity,
+                height: 64,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: Text('CONFIRM AWARENESS', style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.black, letterSpacing: 2)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildNotificationItem(Map<String, dynamic> n, bool isRead) {
     IconData iconData = Icons.info_outline;
     Color iconColor = Colors.white24;
@@ -117,9 +223,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (n['type'] == 'error') { iconData = Icons.error_outline; iconColor = Colors.red; }
 
     return GestureDetector(
-      onTap: () {
-        if (!isRead) _markRead(n['id']);
-      },
+      onTap: () => _showNotificationDetail(n),
       child: Container(
         margin: const EdgeInsets.only(bottom: 2),
         padding: const EdgeInsets.all(20),

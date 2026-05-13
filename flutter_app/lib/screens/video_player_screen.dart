@@ -9,8 +9,9 @@ import '../models/movie.dart';
 class VideoPlayerScreen extends StatefulWidget {
   final Movie movie;
   final String url;
+  final String userEmail;
 
-  const VideoPlayerScreen({super.key, required this.movie, required this.url});
+  const VideoPlayerScreen({super.key, required this.movie, required this.url, required this.userEmail});
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -18,11 +19,15 @@ class VideoPlayerScreen extends StatefulWidget {
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late VideoPlayerController _videoPlayerController;
+  final ApiService _apiService = ApiService();
   bool _showControls = true;
   bool _isBuffering = false;
   double _playbackSpeed = 1.0;
   double _volume = 1.0;
   bool _isMuted = false;
+  bool _hasError = false;
+  String _errorMessage = '';
+  DateTime? _lastUpdate;
 
   @override
   void initState() {
@@ -31,39 +36,84 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Future<void> _initializePlayer() async {
-    // ... logic remains same ...
-    if (widget.movie.localPath != null) {
-      final file = File(widget.movie.localPath!);
-      if (await file.exists()) {
-        _videoPlayerController = VideoPlayerController.file(file);
+    try {
+      debugPrint("Initializing player for Cinode Link: ${widget.url}");
+      final uri = Uri.parse(widget.url.replaceAll(' ', '%20'));
+      if (widget.url.isEmpty) throw Exception("Source URL is empty");
+
+      // Determine source
+      if (widget.movie.localPath != null) {
+        final file = File(widget.movie.localPath!);
+        if (await file.exists()) {
+          _videoPlayerController = VideoPlayerController.file(file);
+        } else {
+          _videoPlayerController = VideoPlayerController.networkUrl(uri);
+        }
       } else {
-        _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.url.replaceAll(' ', '%20')));
+        _videoPlayerController = VideoPlayerController.networkUrl(uri);
       }
-    } else {
-      _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.url.replaceAll(' ', '%20')));
-    }
-    
-    _videoPlayerController.addListener(() {
+      
+      _videoPlayerController.addListener(() {
+        if (mounted) {
+          final position = _videoPlayerController.value.position;
+          // Periodically update progress (every 3 seconds)
+          if (_lastUpdate == null || DateTime.now().difference(_lastUpdate!) > const Duration(seconds: 3)) {
+            _updateProgress();
+          }
+
+          setState(() {
+            _isBuffering = _videoPlayerController.value.isBuffering;
+            if (_videoPlayerController.value.hasError) {
+              _hasError = true;
+              final error = _videoPlayerController.value.errorDescription;
+              _errorMessage = error ?? 'Playback error: Unsupported format or source lost.';
+              debugPrint("CINODE_VIDEO_FAULT: $error | URL: ${widget.url}");
+            }
+          });
+        }
+      });
+
+      await _videoPlayerController.initialize();
+      
+      // Seek to previous position if available
+      if (widget.movie.playbackPosition != null && widget.movie.playbackPosition! > 5) {
+         await Future.delayed(const Duration(milliseconds: 300));
+         await _videoPlayerController.seekTo(Duration(seconds: widget.movie.playbackPosition!));
+      }
+
+      _videoPlayerController.setLooping(false);
+      _videoPlayerController.play();
+      
+      // Auto-hide controls
+      _resetControlTimer();
+
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint("CINODE_PLAYER_ERROR: $e");
       if (mounted) {
         setState(() {
-          _isBuffering = _videoPlayerController.value.isBuffering;
+          _hasError = true;
+          _errorMessage = "Playback failed: Failed to load source.\nTechnical: ${e.toString()}";
         });
       }
-    });
+    }
+  }
 
-    await _videoPlayerController.initialize();
-    _videoPlayerController.setLooping(false);
-    _videoPlayerController.play();
+  Future<void> _updateProgress() async {
+    if (!_videoPlayerController.value.isInitialized) return;
     
-    // Auto-hide controls
-    _resetControlTimer();
-
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-
-    setState(() {});
+    _lastUpdate = DateTime.now();
+    await _apiService.addToHistory(
+      widget.userEmail, 
+      widget.movie,
+      position: _videoPlayerController.value.position.inSeconds,
+      duration: _videoPlayerController.value.duration.inSeconds,
+    );
   }
 
   void _resetControlTimer() {
@@ -76,6 +126,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   void dispose() {
+    _updateProgress(); // Final update
     _videoPlayerController.dispose();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -107,6 +158,77 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_hasError) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            Positioned(
+              top: 40,
+              left: 40,
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 24),
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.redAccent, size: 60),
+                  const SizedBox(height: 16),
+                  Text('CINODE LINK SEVERED', style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.black, color: Colors.white, letterSpacing: 1)),
+                  const SizedBox(height: 12),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 40),
+                    child: Text('The video format is not supported or the source is unavailable.', textAlign: TextAlign.center, style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Text(_errorMessage, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white38, fontSize: 10, letterSpacing: 1)),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: 280,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white, 
+                        foregroundColor: Colors.black, 
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                      ),
+                      child: const Text('CANCEL & GO BACK', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: 280,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setState(() {
+                          _hasError = false;
+                          _errorMessage = '';
+                          _initializePlayer();
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white24),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                      ),
+                      child: const Text('RETRY CONNECTION', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
     if (!_videoPlayerController.value.isInitialized) {
       return const Scaffold(
         backgroundColor: Colors.black,

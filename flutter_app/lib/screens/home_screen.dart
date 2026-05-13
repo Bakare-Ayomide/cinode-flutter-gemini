@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Movie> _comedy = [];
   List<Movie> _horror = [];
   List<Movie> _upcoming = [];
-  List<Movie> _recommendations = [];
+  List<Movie> _history = [];
   List<dynamic> _ads = [];
   bool _isLoading = true;
   bool _isSidebarCollapsed = false;
@@ -122,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _comedy = results[2] as List<Movie>;
       _horror = results[3] as List<Movie>;
       _upcoming = results[4] as List<Movie>;
-      _recommendations = results[5] as List<Movie>;
+      _history = results[5] as List<Movie>;
       _ads = results[6] as List<dynamic>;
       _isLoading = false;
     });
@@ -300,11 +300,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     switch (_selectedIndex) {
       case 1:
-        return const SearchScreen();
+        return SearchScreen(userEmail: _userEmail!);
       case 2:
-        return const WatchlistScreen();
+        return WatchlistScreen(userEmail: _userEmail!);
       case 3:
-        return const DownloadsScreen();
+        return DownloadsScreen(userEmail: _userEmail!);
       case 4:
         return const AdminDashboardScreen();
       case 5:
@@ -316,14 +316,15 @@ class _HomeScreenState extends State<HomeScreen> {
       case 8:
         return AffiliateDashboardScreen(userEmail: _userEmail!);
       default:
+        final recentlyWatched = _history;
         return _isLoading 
           ? const Center(child: CircularProgressIndicator(color: Colors.red))
           : CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
                 _buildHero(),
-                if (_recommendations.isNotEmpty)
-                  _buildContentSection('Recently Viewed', _recommendations),
+                if (recentlyWatched.isNotEmpty)
+                  _buildContentSection('Recently Watched', recentlyWatched),
                 if (_ads.any((a) => a['placement'] == 'homepage'))
                   _buildAdBanner(_ads.firstWhere((a) => a['placement'] == 'homepage')),
                 _buildContentSection('Trending Now', _trending.skip(1).toList()),
@@ -454,7 +455,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => DetailsScreen(movie: movie),
+                            builder: (context) => DetailsScreen(movie: movie, userEmail: _userEmail ?? "contactzerolord@gmail.com"),
                           ),
                         );
                       },
@@ -504,14 +505,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMovieCard(Movie movie) {
+    double? progress;
+    if (movie.playbackPosition != null && movie.duration != null && movie.duration! > 0) {
+      progress = movie.playbackPosition! / movie.duration!;
+    }
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DetailsScreen(movie: movie),
+            builder: (context) => DetailsScreen(movie: movie, userEmail: _userEmail ?? "contactzerolord@gmail.com"),
           ),
-        );
+        ).then((_) => _loadData()); // Refresh history when coming back
       },
       child: Container(
         width: 150,
@@ -520,15 +526,42 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
-                  image: DecorationImage(
-                    image: NetworkImage('https://image.tmdb.org/t/p/w500${movie.posterPath}'),
-                    fit: BoxFit.cover,
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white.withOpacity(0.05)),
+                      image: DecorationImage(
+                        image: NetworkImage('https://image.tmdb.org/t/p/w500${movie.posterPath}'),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
-                ),
+                  if (progress != null && progress > 0.01)
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                        ),
+                        alignment: Alignment.centerLeft,
+                        child: FractionallySizedBox(
+                          widthFactor: progress.clamp(0.0, 1.0),
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.redAccent,
+                              borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 8),

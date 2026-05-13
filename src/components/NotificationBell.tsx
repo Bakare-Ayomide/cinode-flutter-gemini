@@ -8,6 +8,7 @@ export const NotificationBell: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
     const fetchNotifications = async () => {
     try {
@@ -129,7 +130,10 @@ export const NotificationBell: React.FC = () => {
                     <div 
                       key={notif.id}
                       className={`p-5 border-b border-white/[0.02] hover:bg-white/[0.03] transition-all cursor-pointer relative group ${!notif.is_read ? 'bg-white/[0.02]' : ''}`}
-                      onClick={() => markAsRead(notif.id)}
+                      onClick={() => {
+                        markAsRead(notif.id);
+                        setSelectedNotification(notif);
+                      }}
                     >
                       {!notif.is_read && (
                         <div className="absolute top-6 right-5 w-1 h-1 bg-red-600 rounded-full shadow-[0_0_12px_rgba(220,38,38,0.8)]" />
@@ -162,6 +166,72 @@ export const NotificationBell: React.FC = () => {
                     onClick={() => setIsOpen(false)}
                     className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[8px] font-black uppercase tracking-[0.4em] text-white/30 hover:text-white transition-all active:scale-95"
                   >Dismiss System Log</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedNotification && (
+          <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedNotification(null)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-xl" 
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-[#121214] border border-white/5 rounded-3xl shadow-2xl z-[1101] overflow-hidden"
+            >
+              <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.03]">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-red-600/10 rounded-2xl border border-red-500/20">
+                    {getTypeIcon(selectedNotification.type)}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-xs uppercase tracking-[0.25em] italic font-serif text-white/90">Signal Intercept</h3>
+                    <p className="text-[7px] text-white/20 font-black uppercase tracking-[0.3em] mt-0.5">PRIORITY: {selectedNotification.type.toUpperCase()}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedNotification(null)}
+                  className="p-2 hover:bg-white/10 rounded-xl text-white/20 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar bg-[#0D0D0F]">
+                <div className="space-y-2">
+                  <h2 className="text-xl md:text-2xl font-serif italic font-light tracking-tighter uppercase text-white">
+                    {selectedNotification.title}
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    <p className="text-[9px] text-white/20 font-black uppercase tracking-widest">
+                      {new Date(selectedNotification.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(selectedNotification.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="w-full h-px bg-white/5" />
+                
+                <p className="text-sm text-white/60 leading-relaxed font-light whitespace-pre-wrap">
+                  {selectedNotification.message}
+                </p>
+              </div>
+
+              <div className="p-6 bg-white/[0.03] border-t border-white/5">
+                <button 
+                  onClick={() => setSelectedNotification(null)}
+                  className="w-full py-4 bg-white text-black hover:bg-red-600 hover:text-white transition-all font-black uppercase tracking-[0.3em] text-[10px] rounded-2xl active:scale-95 shadow-xl"
+                >
+                  Confirm Awareness
+                </button>
               </div>
             </motion.div>
           </div>

@@ -10,6 +10,12 @@ export interface Movie {
   vote_average: number;
   media_type: 'movie' | 'tv';
   genre_ids: number[];
+  playback_position?: number;
+  duration?: number;
+  season_number?: number;
+  episode_number?: number;
+  episode_name?: string;
+  viewed_at?: string;
 }
 
 export interface MovieDetails extends Movie {
@@ -27,6 +33,17 @@ export interface MovieDetails extends Movie {
   intro_start?: number;
   intro_end?: number;
   has_admin_override?: boolean;
+  jellyfin_url?: string;
+  seasons?: {
+    id: number;
+    name: string;
+    season_number: number;
+    episode_count: number;
+    poster_path: string;
+  }[];
+  recommendations?: {
+    results: Movie[];
+  };
 }
 
 export interface CastMember {

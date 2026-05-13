@@ -5,7 +5,8 @@ import '../services/api_service.dart';
 import 'details_screen.dart';
 
 class DownloadsScreen extends StatefulWidget {
-  const DownloadsScreen({super.key});
+  final String userEmail;
+  const DownloadsScreen({super.key, required this.userEmail});
 
   @override
   State<DownloadsScreen> createState() => _DownloadsScreenState();
@@ -22,16 +23,18 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   }
 
   Future<void> _loadDownloads() async {
-    setState(() => _isLoading = true);
-    final items = await ApiService().getDownloads("contactzerolord@gmail.com");
-    setState(() {
-      _downloadedItems = items;
-      _isLoading = false;
-    });
+    if (mounted) setState(() => _isLoading = true);
+    final items = await ApiService().getDownloads(widget.userEmail);
+    if (mounted) {
+      setState(() {
+        _downloadedItems = items;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _removeDownload(int movieId) async {
-    await ApiService().removeFromDownloads("contactzerolord@gmail.com", movieId);
+    await ApiService().removeFromDownloads(widget.userEmail, movieId);
     _loadDownloads();
   }
 
@@ -99,7 +102,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   Widget _buildDownloadCard(Movie movie) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => DetailsScreen(movie: movie)));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => DetailsScreen(movie: movie, userEmail: widget.userEmail)));
       },
       child: Container(
         decoration: BoxDecoration(

@@ -8,13 +8,26 @@ class ApiService {
     baseUrl: 'https://ais-dev-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app/api',
   ));
 
-  Future<Movie?> getMovieDetails(String type, String id) async {
+  Future<Movie?> getMovieDetails(String type, String id, {int? s, int? e}) async {
     try {
-      final response = await _dio.get('/$type/$id');
+      final response = await _dio.get('/movies/details/$type/$id', queryParameters: {
+        if (s != null) 's': s,
+        if (e != null) 'e': e,
+      });
       return Movie.fromJson(response.data);
     } catch (e) {
       print('Error fetching movie details: $e');
       return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> getTvSeason(int id, int seasonNumber) async {
+    try {
+      final response = await _dio.get('/tv/$id/season/$seasonNumber');
+      return response.data;
+    } catch (e) {
+      print('Error fetching season details: $e');
+      return {};
     }
   }
 
@@ -30,7 +43,7 @@ class ApiService {
     }
   }
 
-  Future<void> addToHistory(String email, Movie movie) async {
+  Future<void> addToHistory(String email, Movie movie, {int? position, int? duration, int? season, int? episode, String? episodeName}) async {
     try {
       await _dio.post('/history', data: {
         'user_email': email,
@@ -38,6 +51,11 @@ class ApiService {
         'title': movie.displayTitle,
         'poster_path': movie.posterPath,
         'media_type': movie.mediaType,
+        'playback_position': position ?? movie.playbackPosition,
+        'duration': duration ?? movie.duration,
+        'season_number': season ?? movie.seasonNumber,
+        'episode_number': episode ?? movie.episodeNumber,
+        'episode_name': episodeName ?? movie.episodeName,
       });
     } catch (e) {
       print('Error adding to history: $e');
@@ -263,6 +281,18 @@ class ApiService {
     } catch (e) {
       print('Upload proof error: $e');
       return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> getAdminStats(String email) async {
+    try {
+      final response = await _dio.get(
+        '/admin/stats',
+        options: Options(headers: {'x-user-email': email}),
+      );
+      return response.data;
+    } catch (e) {
+      return {};
     }
   }
 
@@ -587,5 +617,53 @@ class ApiService {
       print('Search error: $e');
       return [];
     }
+  }
+
+  // Jellyfin
+  Future<List<dynamic>> getAdminJellyfinServers(String email) async {
+    try {
+      final response = await _dio.get(
+        '/admin/jellyfin/servers',
+        options: Options(headers: {'x-user-email': email}),
+      );
+      return response.data;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<void> saveAdminJellyfinServer(String email, Map<String, dynamic> server) async {
+    await _dio.post(
+      '/admin/jellyfin/servers',
+      data: server,
+      options: Options(headers: {'x-user-email': email}),
+    );
+  }
+
+  Future<void> deleteAdminJellyfinServer(String email, int id) async {
+    await _dio.delete(
+      '/admin/jellyfin/servers/$id',
+      options: Options(headers: {'x-user-email': email}),
+    );
+  }
+
+  Future<List<dynamic>> getAdminSettings(String email) async {
+    try {
+      final response = await _dio.get(
+        '/admin/settings',
+        options: Options(headers: {'x-user-email': email}),
+      );
+      return response.data;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<void> saveAdminSetting(String email, String key, String value) async {
+    await _dio.post(
+      '/admin/settings',
+      data: {'key': key, 'value': value},
+      options: Options(headers: {'x-user-email': email}),
+    );
   }
 }

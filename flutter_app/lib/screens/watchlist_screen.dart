@@ -6,7 +6,8 @@ import 'package:provider/provider.dart';
 import 'details_screen.dart';
 
 class WatchlistScreen extends StatefulWidget {
-  const WatchlistScreen({super.key});
+  final String userEmail;
+  const WatchlistScreen({super.key, required this.userEmail});
 
   @override
   State<WatchlistScreen> createState() => _WatchlistScreenState();
@@ -24,11 +25,13 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
 
   Future<void> _loadWatchlist() async {
     final api = context.read<ApiService>();
-    final list = await api.getWatchlist('contactzerolord@gmail.com');
-    setState(() {
-      _watchlist = list;
-      _isLoading = false;
-    });
+    final list = await api.getWatchlist(widget.userEmail);
+    if (mounted) {
+      setState(() {
+        _watchlist = list;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -84,7 +87,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DetailsScreen(movie: movie),
+            builder: (context) => DetailsScreen(movie: movie, userEmail: widget.userEmail),
           ),
         );
       },

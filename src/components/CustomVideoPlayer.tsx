@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import Hls from 'hls.js';
 import { 
   Play, 
   Pause, 
@@ -11,7 +12,8 @@ import {
   FastForward,
   Rewind,
   Loader2,
-  MonitorPlay
+  MonitorPlay,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -21,7 +23,9 @@ interface CustomVideoPlayerProps {
   title?: string;
   introStart?: number;
   introEnd?: number;
+  initialTime?: number;
   onClose: () => void;
+  onProgressUpdate?: (time: number, duration: number) => void;
 }
 
 export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({ 
@@ -30,7 +34,9 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   title, 
   introStart, 
   introEnd,
-  onClose 
+  initialTime = 0,
+  onClose,
+  onProgressUpdate 
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -45,7 +51,128 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [quality, setQuality] = useState('4K Master');
+  const [error, setError] = useState<string | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const controlsTimeout = useRef<any>(null);
+  const progressIntervalRef = useRef<any>(null);
+  const currentTimeRef = useRef(0);
+  const durationRef = useRef(0);
+
+  // Sync refs for interval access
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
+
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
+
+  // Handle progress updates to server
+  useEffect(() => {
+    if (isPlaying) {
+      progressIntervalRef.current = setInterval(() => {
+        if (onProgressUpdate && currentTimeRef.current > 0) {
+          onProgressUpdate(currentTimeRef.current, durationRef.current);
+        }
+      }, 3000); // Every 3 seconds
+    } else {
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    }
+
+    return () => {
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    };
+  }, [isPlaying, onProgressUpdate]);
+
+  // Final progress update on unmount
+  useEffect(() => {
+    return () => {
+      if (onProgressUpdate && currentTimeRef.current > 0) {
+        onProgressUpdate(currentTimeRef.current, durationRef.current);
+      }
+    };
+  }, [onProgressUpdate]);
+
+  useEffect(() => {
+    // Reset error when src changes
+    setError(null);
+    setIsLoading(true);
+
+    const video = videoRef.current;
+    if (!video || !src || src.trim() === '') {
+        if (!src || src.trim() === '') setError("Invalid source content.");
+        return;
+    }
+
+    // Clean up previous Hls instance
+    if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+    }
+
+    const decodedSrc = src.replace(/ /g, '%20');
+    
+    const isHls = decodedSrc.includes('.m3u8') || src.includes('proxy?u=') || src.includes('m3u8');
+    
+    if (Hls.isSupported() && isHls) {
+        const hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 90,
+            xhrSetup: (xhr) => {
+              xhr.withCredentials = false;
+            }
+        });
+        hls.loadSource(decodedSrc);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            setIsLoading(false);
+            if (initialTime > 0) {
+              video.currentTime = initialTime;
+            }
+            if (isPlaying) video.play().catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+                console.error("HLS Fatal Error:", data);
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        setError("Cinode Link Severed: Network error. Retrying...");
+                        hls.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        setError("Cinode Link Severed: Media decoding error. Recovering...");
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        setError("Cinode Link Severed: Unsupported stream format.");
+                        hls.destroy();
+                        break;
+                }
+            }
+        });
+        hlsRef.current = hls;
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS support (Safari)
+        video.src = decodedSrc;
+        if (initialTime > 0) {
+          video.currentTime = initialTime;
+        }
+    } else {
+        // Direct source (MP4, WebM etc)
+        video.src = decodedSrc;
+        if (initialTime > 0) {
+          video.currentTime = initialTime;
+        }
+    }
+
+    return () => {
+        if (hlsRef.current) {
+            hlsRef.current.destroy();
+            hlsRef.current = null;
+        }
+    }
+  }, [src, initialTime]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -164,7 +291,36 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
       setIsLoading(false);
+      setError(null);
+      
+      // Auto seek to initial time if provided
+      if (initialTime > 0 && videoRef.current.currentTime !== initialTime) {
+        videoRef.current.currentTime = initialTime;
+      }
     }
+  };
+
+  const handleVideoError = () => {
+    const video = videoRef.current;
+    if (video && video.error) {
+      console.error("Video Error Details:", {
+        code: video.error.code,
+        message: video.error.message,
+        src: video.src
+      });
+      
+      let msg = "A playback error occurred.";
+      switch (video.error.code) {
+        case 1: msg = "Playback aborted."; break;
+        case 2: msg = "Network error while loading video."; break;
+        case 3: msg = "Video decoding failed."; break;
+        case 4: msg = "The video format is not supported or the source is unavailable."; break;
+      }
+      setError(msg);
+    } else {
+      setError("An unknown playback error occurred.");
+    }
+    setIsLoading(false);
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -248,11 +404,11 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       {/* Video Element */}
       <video
         ref={videoRef}
-        src={src.replace(/ /g, '%20')}
         poster={poster}
         className="w-full h-full object-contain pointer-events-auto"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onError={handleVideoError}
         onWaiting={() => setIsLoading(true)}
         onPlaying={() => setIsLoading(false)}
         onClick={togglePlay}
@@ -265,6 +421,44 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         disablePictureInPicture={false}
         disableRemotePlayback
       />
+
+      {/* Error Overlay */}
+      <AnimatePresence>
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md p-6 text-center"
+          >
+            <div className="p-6 bg-red-600/10 rounded-full mb-6 border border-red-600/20">
+                <RotateCcw className="text-red-500" size={48} />
+            </div>
+            <h3 className="text-xl md:text-2xl font-serif italic text-white mb-2">Cinode Link Severed</h3>
+            <p className="text-white/40 text-[10px] uppercase tracking-[0.2em] mb-8 max-w-xs">{error}</p>
+            <div className="flex flex-col gap-4 w-full max-w-[280px]">
+              <button 
+                  onClick={onClose}
+                  className="px-10 py-4 bg-white text-black font-black uppercase tracking-[0.3em] text-[10px] rounded-2xl hover:bg-red-600 hover:text-white transition-all active:scale-95"
+              >
+                  CANCEL & GO BACK
+              </button>
+              <button 
+                  onClick={() => {
+                      setError(null);
+                      setIsLoading(true);
+                      if (videoRef.current) {
+                          videoRef.current.load();
+                      }
+                  }}
+                  className="px-10 py-4 border border-white/20 text-white font-black uppercase tracking-[0.3em] text-[10px] rounded-2xl hover:bg-white/10 transition-all active:scale-95"
+              >
+                  RE-ESTABLISH CONNECTION
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Loading Overlay */}
       <AnimatePresence>
@@ -316,7 +510,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 onClick={onClose}
                 className="p-2 md:p-3 bg-white/5 hover:bg-red-600 rounded-full transition-all active:scale-90"
               >
-                <RotateCcw size={18} className="-scale-x-100" />
+                <X size={18} />
               </button>
             </div>
 

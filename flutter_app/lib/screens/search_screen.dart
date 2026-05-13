@@ -6,7 +6,8 @@ import 'package:provider/provider.dart';
 import 'details_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final String userEmail;
+  const SearchScreen({super.key, required this.userEmail});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -113,7 +114,7 @@ class _SearchScreenState extends State<SearchScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DetailsScreen(movie: movie),
+            builder: (context) => DetailsScreen(movie: movie, userEmail: widget.userEmail),
           ),
         );
       },

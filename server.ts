@@ -181,10 +181,32 @@ async function initDB() {
             poster_path TEXT,
             media_type VARCHAR(20),
             viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            playback_position INT DEFAULT 0,
+            duration INT DEFAULT 0,
+            season_number INT,
+            episode_number INT,
+            episode_name VARCHAR(255),
             UNIQUE KEY unique_user_movie (user_email, movie_id),
             FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE CASCADE
         ) ENGINE=InnoDB
     `);
+
+    // Migrate history table for progress columns if they don't exist
+    try {
+        await pool.execute('ALTER TABLE history ADD COLUMN playback_position INT DEFAULT 0');
+    } catch (e) {}
+    try {
+        await pool.execute('ALTER TABLE history ADD COLUMN duration INT DEFAULT 0');
+    } catch (e) {}
+    try {
+        await pool.execute('ALTER TABLE history ADD COLUMN season_number INT');
+    } catch (e) {}
+    try {
+        await pool.execute('ALTER TABLE history ADD COLUMN episode_number INT');
+    } catch (e) {}
+    try {
+        await pool.execute('ALTER TABLE history ADD COLUMN episode_name VARCHAR(255)');
+    } catch (e) {}
 
     await pool.execute(`
         CREATE TABLE IF NOT EXISTS downloads (
@@ -328,6 +350,20 @@ async function initDB() {
         ) ENGINE=InnoDB
     `);
 
+    // Jellyfin Servers
+    await pool.execute(`
+        CREATE TABLE IF NOT EXISTS jellyfin_servers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            url TEXT NOT NULL,
+            api_key TEXT NOT NULL,
+            priority INT DEFAULT 0,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB
+    `);
+
     // Bootstrap initial payment config if not exists
     const [configRows]: any = await pool.execute('SELECT * FROM payment_config LIMIT 1');
     if (configRows.length === 0) {
@@ -466,37 +502,274 @@ app.get("/api/discover", async (req, res) => {
   }
 });
 
+app.get("/api/jellyfin/proxy", async (req, res) => {
+    const { u } = req.query;
+    if (!u) return res.status(400).send("Missing URL");
+    
+    try {
+        const decodedUrl = Buffer.from(u as string, 'base64').toString('utf8');
+        const isM3U8 = decodedUrl.includes('.m3u8');
+        
+        // Handle range requests for video streaming compatibility
+        const headers: any = {};
+        if (req.headers.range) {
+            headers.range = req.headers.range;
+        }
+        // Forward User-Agent and other useful headers
+        if (req.headers['user-agent']) headers['user-agent'] = req.headers['user-agent'];
+
+        const response = await axios({
+            method: 'get',
+            url: decodedUrl,
+            responseType: isM3U8 ? 'text' : 'stream',
+            headers: headers,
+            timeout: isM3U8 ? 30000 : 0 // Increased timeout for playlist transcodes
+        });
+
+        if (isM3U8) {
+            let content = response.data as string;
+            const lines = content.split('\n');
+            const jellyfinBase = new URL(decodedUrl).origin;
+            
+            const protocol = req.protocol === 'https' ? 'https' : 'http';
+            const host = req.get('host');
+            const baseProxyUrl = `${protocol}://${host}/api/jellyfin/proxy?u=`;
+            
+            const rewrittenLines = lines.map(line => {
+                const trimmed = line.trim();
+                if (trimmed === '' || trimmed.startsWith('#')) {
+                    // Check for EXT-X-MAP or other tags that might have URLs
+                    if (trimmed.startsWith('#EXT-X-MAP:URI="')) {
+                        const match = trimmed.match(/URI="([^"]+)"/);
+                        if (match) {
+                            let mapUrl = match[1];
+                            if (!mapUrl.startsWith('http')) {
+                                mapUrl = new URL(mapUrl, decodedUrl).href;
+                            }
+                            const encoded = encodeURIComponent(Buffer.from(mapUrl).toString('base64'));
+                            return trimmed.replace(match[1], `${baseProxyUrl}${encoded}`);
+                        }
+                    }
+                    return line;
+                }
+                
+                // It's a segment or sub-playlist URL
+                let fullUrl = trimmed;
+                try {
+                    if (!trimmed.startsWith('http')) {
+                        // Resolve relative URL based on the current playlist URL
+                        fullUrl = new URL(trimmed, decodedUrl).href;
+                    } else {
+                        // Absolute URL. Check if it's already a proxy URL to avoid double wrapping
+                        if (trimmed.includes('/api/jellyfin/proxy?u=')) {
+                            return line;
+                        }
+                        // For absolute URLs from Jellyfin, we force proxying to handle internal IP issues
+                        fullUrl = trimmed;
+                    }
+                    const encoded = encodeURIComponent(Buffer.from(fullUrl).toString('base64'));
+                    return `${baseProxyUrl}${encoded}`;
+                } catch (e) {
+                    return line;
+                }
+            });
+            
+            res.set('Content-Type', 'application/x-mpegURL');
+            res.set('Access-Control-Allow-Origin', '*');
+            res.set('Cache-Control', 'no-cache');
+            return res.send(rewrittenLines.join('\n'));
+        }
+
+        // Forward headers from Jellyfin (type, length, range, etc)
+        const filteredHeaders = { ...response.headers };
+        delete filteredHeaders['host'];
+        delete filteredHeaders['connection'];
+        delete filteredHeaders['content-length'];
+        
+        // Ensure proper MIME for segments
+        if (decodedUrl.toLowerCase().endsWith('.mp4') || decodedUrl.toLowerCase().endsWith('.m4s')) {
+            res.set('Content-Type', 'video/mp4');
+        } else if (decodedUrl.toLowerCase().endsWith('.ts')) {
+            res.set('Content-Type', 'video/mp2t');
+        }
+        
+        res.set(filteredHeaders);
+        res.set('Access-Control-Allow-Origin', '*');
+        response.data.pipe(res);
+    } catch (err: any) {
+        console.error("Proxy error for URL:", u, "Error:", err.message);
+        res.status(500).send("Proxy failed: " + err.message);
+    }
+});
+
 app.get("/api/movies/details/:type/:id", async (req, res) => {
   const { type, id } = req.params;
+  const { s, e } = req.query; // Season and Episode number for TV
   try {
     let data = await tmdbFetch(`/${type}/${id}`, { append_to_response: "credits,videos,recommendations" });
     
     // Merge overrides if they exist
     try {
         if (dbReady) {
-            const [rows]: any = await pool.execute(
-                'SELECT * FROM media_overrides WHERE tmdb_id = ? AND media_type = ?',
-                [String(id), type]
-            );
+            // Check for specific episode override first if s/e provided
+            let overrideQuery = 'SELECT * FROM media_overrides WHERE tmdb_id = ? AND media_type = ?';
+            let params = [String(id), type];
+            if (s && e) {
+                overrideQuery += ' AND season_number = ? AND episode_number = ?';
+                params.push(s as string, e as string);
+            } else {
+                overrideQuery += ' AND (season_number IS NULL OR season_number = "" OR season_number = 0)'; // Default for series or movie
+            }
+
+            const [rows]: any = await pool.execute(overrideQuery, params);
             if (rows.length > 0) {
                 const override = rows[0];
+                if (!data.videos) data.videos = { results: [] };
                 if (override.video_url) {
-                    if (!data.videos) data.videos = { results: [] };
                     data.videos.results.unshift({
-                    key: override.video_url,
-                    name: "Direct Source",
-                    site: "Cinode Vault",
-                    type: "Override",
-                    is_override: true 
+                        key: override.video_url,
+                        name: "Premium Admin Link",
+                        site: "Direct",
+                        type: "Override",
+                        is_override: true
                     });
                     data.override_url = override.video_url;
                     data.intro_start = override.intro_start;
                     data.intro_end = override.intro_end;
                 }
-                if (override.custom_title) data.title = override.custom_title;
-                if (override.custom_title) data.name = override.custom_title;
+                if (override.custom_title) {
+                    data.title = override.custom_title;
+                    data.name = override.custom_title;
+                }
                 if (override.custom_overview) data.overview = override.custom_overview;
                 data.has_admin_override = true;
+            } else {
+                // Try Jellyfin Fallback from DB Servers
+                const [servers]: any = await pool.execute('SELECT * FROM jellyfin_servers WHERE is_active = 1 ORDER BY priority DESC');
+                
+                let foundAny = false;
+                for (const server of servers) {
+                    const jellyfinUrl = server.url;
+                    const jellyfinKey = server.api_key;
+                    
+                    try {
+                        const providerId = type === 'movie' ? `Tmdb=${id}` : `Tmdb=${id}`; 
+                        let searchRes = await axios.get(`${jellyfinUrl}/Items`, {
+                            params: {
+                                api_key: jellyfinKey,
+                                AnyProviderIdEquals: providerId,
+                                IncludeItemTypes: type === 'movie' ? "Movie" : "Series",
+                                Recursive: true,
+                                Fields: "Path,MediaSources,MediaStreams"
+                            },
+                            timeout: 10000
+                        });
+
+                        // Fallback: Search by title if ID search yields nothing
+                        if (!searchRes.data.Items || searchRes.data.Items.length === 0) {
+                             searchRes = await axios.get(`${jellyfinUrl}/Items`, {
+                                params: {
+                                    api_key: jellyfinKey,
+                                    SearchTerm: data.title || data.name,
+                                    IncludeItemTypes: type === 'movie' ? "Movie" : "Series",
+                                    Recursive: true,
+                                    Limit: 1
+                                },
+                                timeout: 8000
+                            });
+                        }
+                        
+                        if (searchRes.data.Items && searchRes.data.Items.length > 0) {
+                            const item = searchRes.data.Items[0];
+                            let targetItemId = item.Id;
+
+                            // FOR TV EPISODES: Deep discovery
+                            if (type === 'tv' && s && e) {
+                                try {
+                                    console.log(`Deep discovery for Series: ${item.Name} (${item.Id}), Season ${s} Episode ${e}`);
+                                    // 1. Get Seasons of this series
+                                    const seasonsRes = await axios.get(`${jellyfinUrl}/Items`, {
+                                        params: {
+                                            api_key: jellyfinKey,
+                                            ParentId: item.Id,
+                                            IncludeItemTypes: "Season",
+                                            Recursive: false
+                                        }
+                                    });
+                                    const targetSeason = seasonsRes.data.Items.find((season: any) => season.IndexNumber === parseInt(s as string));
+                                    if (targetSeason) {
+                                        // 2. Get Episodes of this season
+                                        const episodesRes = await axios.get(`${jellyfinUrl}/Items`, {
+                                            params: {
+                                                api_key: jellyfinKey,
+                                                ParentId: targetSeason.Id,
+                                                IncludeItemTypes: "Episode",
+                                                Recursive: false
+                                            }
+                                        });
+                                        const targetEpisode = episodesRes.data.Items.find((episode: any) => episode.IndexNumber === parseInt(e as string));
+                                        if (targetEpisode) {
+                                            targetItemId = targetEpisode.Id;
+                                            console.log(`Found target episode ID: ${targetItemId}`);
+                                        }
+                                    }
+                                } catch (deepErr: any) {
+                                    console.error(`Deep Jellyfin discovery failed: ${deepErr.message}`);
+                                }
+                            }
+
+                            // Direct Download URL
+                            const rawDirectUrl = `${jellyfinUrl}/Items/${targetItemId}/Download?api_key=${jellyfinKey}`;
+                            // HLS Master Playlist URL (often better for compatibility/transcoding)
+                            const rawHlsUrl = `${jellyfinUrl}/Videos/${targetItemId}/master.m3u8?api_key=${jellyfinKey}`;
+                            
+                            // Wrap in Proxy
+                            const protocol = req.protocol === 'https' ? 'https' : 'http';
+                            const host = req.get('host');
+                            const baseProxyUrl = `${protocol}://${host}/api/jellyfin/proxy?u=`;
+                            
+                            const proxyDirectUrl = `${baseProxyUrl}${encodeURIComponent(Buffer.from(rawDirectUrl).toString('base64'))}`;
+                            const proxyHlsUrl = `${baseProxyUrl}${encodeURIComponent(Buffer.from(rawHlsUrl).toString('base64'))}`;
+                            
+                            console.log(`Jellyfin found item for ${type} ${id} on server ${server.name}: ${item.Name} (${item.Id})`);
+
+                            if (!data.videos) data.videos = { results: [] };
+                            
+                            // Add HLS first as it's often more compatible
+                            data.videos.results.unshift({
+                                key: proxyHlsUrl,
+                                name: `Jellyfin (${server.name}) ${s?`S${s}E${e}`:''} [HLS]`,
+                                site: "Jellyfin",
+                                type: "HLS",
+                                is_jellyfin: true
+                            });
+
+                            data.videos.results.unshift({
+                                key: proxyDirectUrl,
+                                name: `Jellyfin (${server.name}) ${s?`S${s}E${e}`:''} [Direct]`,
+                                site: "Jellyfin",
+                                type: "Direct",
+                                is_jellyfin: true
+                            });
+
+                            // Default to HLS for better browser support
+                            data.jellyfin_url = proxyHlsUrl;
+                            foundAny = true;
+                            break; // Stop after finding on one server
+                        }
+                    } catch (jError: any) {
+                        console.error(`Jellyfin lookup failed on server ${server.name}:`, jError.message);
+                    }
+                }
+
+                // If not in DB, try env fallback as last resort (deprecated)
+                if (!foundAny) {
+                    const envJellyfinUrl = process.env.JELLYFIN_SERVER_URL;
+                    const envJellyfinKey = process.env.JELLYFIN_API_KEY;
+                    if (envJellyfinUrl && envJellyfinKey) {
+                        // ... existing fallback code if desired, but I'll skip it in favor of DB managed servers
+                    }
+                }
             }
         }
     } catch (err: any) {
@@ -950,7 +1223,7 @@ app.post("/api/downloads", ensureDB, async (req, res) => {
 
         await pool.execute(
             'INSERT INTO downloads (user_email, movie_id, title, poster_path, media_type, local_path) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE local_path = VALUES(local_path)',
-            [user_email, String(movie_id), title, poster_path, media_type, local_path]
+            [user_email, String(movie_id), title ?? null, poster_path ?? null, media_type ?? null, local_path ?? null]
         );
         res.json({ success: true });
     } catch (err: any) {
@@ -991,7 +1264,7 @@ app.post("/api/watchlist", ensureDB, async (req, res) => {
   try {
     await pool.execute(
         'INSERT INTO watchlists (user_email, movie_id, title, poster_path, media_type) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE created_at = created_at',
-        [user_email, String(movie_id), title, poster_path, media_type]
+        [user_email, String(movie_id), title ?? null, poster_path ?? null, media_type ?? null]
     );
     res.json({ success: true });
   } catch (err: any) {
@@ -1032,7 +1305,7 @@ app.post("/api/reviews", ensureDB, async (req, res) => {
     try {
       await pool.execute(
           'INSERT INTO reviews (user_email, movie_id, media_type, rating, comment) VALUES (?, ?, ?, ?, ?)',
-          [user_email, String(movie_id), media_type, rating, comment]
+          [user_email, String(movie_id), media_type ?? null, rating ?? 0, comment ?? null]
       );
       res.json({ success: true });
     } catch (err: any) {
@@ -1045,7 +1318,7 @@ app.get("/api/user/history", ensureDB, async (req, res) => {
     if (!email || email === "undefined") return res.json([]);
     try {
         const [rows]: any = await pool.execute(
-            'SELECT * FROM history WHERE user_email = ? ORDER BY viewed_at DESC LIMIT 10',
+            'SELECT h.*, h.movie_id as id FROM history h WHERE h.user_email = ? ORDER BY h.viewed_at DESC LIMIT 20',
             [email]
         );
         res.json(rows);
@@ -1467,12 +1740,12 @@ app.post("/api/admin/overrides", ensureDB, adminOnly, async (req, res) => {
       if (id) {
           await pool.execute(
               'UPDATE media_overrides SET title = ?, tmdb_id = ?, media_type = ?, season_number = ?, episode_number = ?, video_url = ?, intro_start = ?, intro_end = ?, custom_title = ?, custom_overview = ? WHERE id = ?',
-              [title, tmdb_id, media_type, s, e, video_url, intro_start || null, intro_end || null, custom_title, custom_overview, id]
+              [title ?? null, tmdb_id ?? null, media_type ?? null, s ?? null, e ?? null, video_url ?? null, intro_start ?? null, intro_end ?? null, custom_title ?? null, custom_overview ?? null, id]
           );
       } else {
           await pool.execute(
               'INSERT INTO media_overrides (title, tmdb_id, media_type, season_number, episode_number, video_url, intro_start, intro_end, custom_title, custom_overview) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-              [title, tmdb_id, media_type, s, e, video_url, intro_start || null, intro_end || null, custom_title, custom_overview]
+              [title ?? null, tmdb_id ?? null, media_type ?? null, s ?? null, e ?? null, video_url ?? null, intro_start ?? null, intro_end ?? null, custom_title ?? null, custom_overview ?? null]
           );
       }
       
@@ -1493,12 +1766,70 @@ app.delete("/api/admin/overrides/:id", ensureDB, adminOnly, async (req, res) => 
     }
 });
 
+// Admin Jellyfin Server Management
+app.get("/api/admin/jellyfin/servers", ensureDB, adminOnly, async (req, res) => {
+    try {
+        const [rows]: any = await pool.execute('SELECT * FROM jellyfin_servers ORDER BY priority DESC');
+        res.json(rows);
+    } catch (err: any) {
+        res.status(500).json({ error: `Fetch servers failed: ${err.message}` });
+    }
+});
+
+app.post("/api/admin/jellyfin/servers", ensureDB, adminOnly, async (req, res) => {
+    const { id, name, url, api_key, priority, is_active } = req.body;
+    try {
+        if (id) {
+            await pool.execute(
+                'UPDATE jellyfin_servers SET name = ?, url = ?, api_key = ?, priority = ?, is_active = ? WHERE id = ?',
+                [name, url, api_key, priority || 0, is_active ? 1 : 0, id]
+            );
+        } else {
+            await pool.execute(
+                'INSERT INTO jellyfin_servers (name, url, api_key, priority, is_active) VALUES (?, ?, ?, ?, ?)',
+                [name, url, api_key, priority || 0, is_active ? 1 : 0]
+            );
+        }
+        res.json({ success: true });
+    } catch (err: any) {
+        res.status(500).json({ error: `Save server failed: ${err.message}` });
+    }
+});
+
+app.delete("/api/admin/jellyfin/servers/:id", ensureDB, adminOnly, async (req, res) => {
+    try {
+        await pool.execute('DELETE FROM jellyfin_servers WHERE id = ?', [req.params.id]);
+        res.json({ success: true });
+    } catch (err: any) {
+        res.status(500).json({ error: `Delete server failed: ${err.message}` });
+    }
+});
+
 app.post("/api/history", ensureDB, async (req, res) => {
-    const { user_email, movie_id, title, poster_path, media_type } = req.body;
+    const { user_email, movie_id, title, poster_path, media_type, playback_position, duration, season_number, episode_number, episode_name } = req.body;
     try {
       await pool.execute(
-          'INSERT INTO history (user_email, movie_id, title, poster_path, media_type) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP',
-          [user_email, String(movie_id), title, poster_path, media_type]
+          `INSERT INTO history (user_email, movie_id, title, poster_path, media_type, playback_position, duration, season_number, episode_number, episode_name) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+           ON DUPLICATE KEY UPDATE 
+            viewed_at = CURRENT_TIMESTAMP,
+            playback_position = VALUES(playback_position),
+            duration = VALUES(duration),
+            season_number = VALUES(season_number),
+            episode_number = VALUES(episode_number),
+            episode_name = VALUES(episode_name)`,
+          [
+            user_email, 
+            String(movie_id), 
+            title ?? null, 
+            poster_path ?? null, 
+            media_type ?? null, 
+            playback_position ?? 0, 
+            duration ?? 0, 
+            season_number ?? null, 
+            episode_number ?? null, 
+            episode_name ?? null
+          ]
       );
       res.json({ success: true });
     } catch (err: any) {
@@ -1507,7 +1838,7 @@ app.post("/api/history", ensureDB, async (req, res) => {
 });
 
 async function startServer() {
-  initDB(); // Launch in background
+  initDB().catch(err => console.error("Background DB Init Error:", err));
 
   // Background DB reconnection check if it failed initially
   setInterval(async () => {
@@ -1531,6 +1862,10 @@ async function startServer() {
     }
   }, 15000); // Check every 15s for better responsiveness
 
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -1544,18 +1879,28 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
 }
 
 export default app;
 
-// Only start the server if this file is run directly
-if (process.env.NODE_ENV !== "test" && import.meta.url === `file://${process.argv[1]}`) {
-  startServer();
+// More robust main check for different environments
+const isMain = !process.env.VERCEL && 
+               process.env.NODE_ENV !== "test" && 
+               (process.env.ALWAYS_START === "true" || !process.env.NODE_ENV || process.env.NODE_ENV === "development" || 
+                (process.argv[1] && (
+                  process.argv[1].endsWith('server.ts') || 
+                  process.argv[1].endsWith('server.js') || 
+                  process.argv[1].endsWith('server.cjs') ||
+                  import.meta.url === `file://${process.argv[1]}`
+                )));
+
+if (isMain) {
+  console.log("SERVER_START_SEQUENCE: Initializing Cinode Backend...");
+  startServer().catch(err => {
+      console.error("CRITICAL_BOOT_FAILURE: Failed to start server:", err);
+      process.exit(1);
+  });
 } else if (process.env.VERCEL) {
-    // On Vercel, we need to initialize the DB but not call listen
-    initDB();
+    console.log("VERCEL_DETECTED: Initializing DB only.");
+    initDB().catch(err => console.error("Vercel DB Init Error:", err));
 }

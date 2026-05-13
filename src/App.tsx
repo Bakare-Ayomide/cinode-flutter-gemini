@@ -19,6 +19,7 @@ import {
   Shield,
   Download,
   Trash2,
+  MonitorPlay,
   Gem,
   Bell,
   ArrowUpRight,
@@ -55,12 +56,16 @@ export default function App() {
   const [frMovies, setFrMovies] = useState<Movie[]>([]);
   const [upcoming, setUpcoming] = useState<Movie[]>([]);
   const [recs, setRecs] = useState<Movie[]>([]);
+  const [history, setHistory] = useState<Movie[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'watchlist' | 'search' | 'admin' | 'downloads' | 'profile' | 'affiliate'>('home');
   const [isPremium, setIsPremium] = useState(false);
   const [isAffiliate, setIsAffiliate] = useState(false);
@@ -242,7 +247,8 @@ export default function App() {
         usRes, 
         frRes, 
         upcomingRes,
-        watchlistRes
+        watchlistRes,
+        historyRes
       ] = await Promise.all([
         movieApi.getTrending(),
         movieApi.getTvTrending(),
@@ -253,7 +259,8 @@ export default function App() {
         movieApi.discover({ region: 'US', sort_by: 'popularity.desc' }),
         movieApi.discover({ region: 'FR', sort_by: 'popularity.desc' }),
         movieApi.discover({ sort_by: 'release_date.desc' }),
-        movieApi.getWatchlist().catch(() => []) // Don't block whole UI if watchlist fails
+        movieApi.getWatchlist().catch(() => []),
+        movieApi.getHistory().catch(() => [])
       ]);
 
       setTrending(trendingRes?.results || []);
@@ -266,6 +273,7 @@ export default function App() {
       setFrMovies(frRes?.results || []);
       setUpcoming(upcomingRes?.results || []);
       setWatchlist(Array.isArray(watchlistRes) ? watchlistRes : []);
+      setHistory(Array.isArray(historyRes) ? historyRes : []);
 
       // Fetch recs separately to not block main UI
       fetchRecs();
@@ -293,6 +301,60 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem('cinode_user');
     setUser(null);
+    setIsAdmin(false);
+    setIsPremium(false);
+  };
+
+  const handleProgressUpdate = async (time: number, duration: number) => {
+    if (!user || !playingMovie) return;
+    
+    // Quick local storage fallback
+    try {
+      const localHistory = JSON.parse(localStorage.getItem('cinode_history') || '[]');
+      const updatedHistory = [
+        {
+          ...playingMovie,
+          playback_position: Math.floor(time),
+          duration: Math.floor(duration),
+          viewed_at: new Date().toISOString()
+        },
+        ...localHistory.filter((m: any) => m.id !== playingMovie.id)
+      ].slice(0, 50);
+      localStorage.setItem('cinode_history', JSON.stringify(updatedHistory));
+    } catch (e) {
+      console.warn("Local history save failed", e);
+    }
+
+    try {
+      await movieApi.addToHistory({
+        user_email: user,
+        movie_id: playingMovie.id,
+        title: playingMovie.title || playingMovie.name,
+        poster_path: playingMovie.poster_path,
+        media_type: playingMovie.media_type,
+        playback_position: Math.floor(time),
+        duration: Math.floor(duration),
+        season_number: selectedSeason,
+        // We can't easily get episode info from playingMovie right now, 
+        // but we can pass it when we call setPlayingMovie if we improve the state.
+        // For now, let's just save time.
+      });
+      
+      // Update local history state
+      setHistory(prev => {
+        const filtered = prev.filter(m => String(m.movie_id || m.id) !== String(playingMovie.id));
+        const updated = {
+          ...playingMovie,
+          movie_id: playingMovie.id, // Explicitly set movie_id for history consistency
+          playback_position: Math.floor(time),
+          duration: Math.floor(duration),
+          viewed_at: new Date().toISOString()
+        };
+        return [updated, ...filtered].slice(0, 20);
+      });
+    } catch (e) {
+      console.error("Failed to update status progress", e);
+    }
   };
 
   const handleSearch = async (val: string) => {
@@ -319,9 +381,18 @@ export default function App() {
     const type = movie.media_type || 'movie';
     setSelectedMovie(movie);
     setMovieDetails(null);
+    setSelectedSeason(null);
+    setEpisodes([]);
+    
     try {
       const data = await movieApi.getDetails(type, movie.id);
       setMovieDetails(data);
+      
+      // If it's TV, default to season 1 and fetch its episodes
+      if (type === 'tv' && data.seasons && data.seasons.length > 0) {
+          const firstSeason = data.seasons.find((s: any) => s.season_number > 0) || data.seasons[0];
+          handleSeasonChange(movie.id, firstSeason.season_number);
+      }
       // Add to history
       if (user) {
         await movieApi.addToHistory({
@@ -334,6 +405,39 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleSeasonChange = async (tvId: number, seasonNumber: number) => {
+    setSelectedSeason(seasonNumber);
+    setLoadingEpisodes(true);
+    try {
+        const data = await movieApi.getTvSeason(tvId, seasonNumber);
+        setEpisodes(data.episodes || []);
+    } catch (err) {
+        console.error("Failed to fetch episodes:", err);
+    } finally {
+        setLoadingEpisodes(false);
+    }
+  };
+
+  const playEpisode = async (episode: any) => {
+    if (!selectedMovie || !selectedSeason) return;
+    
+    // Fetch deep details for this specific episode (Jellyfin discovery)
+    setLoading(true);
+    try {
+        const deepDetails = await movieApi.getDetails('tv', selectedMovie.id, selectedSeason, episode.episode_number);
+        setMovieDetails(deepDetails);
+        setPlayingMovie({
+            ...selectedMovie,
+            title: `${selectedMovie.name} - S${selectedSeason}E${episode.episode_number}: ${episode.name}`,
+            overview: episode.overview
+        });
+    } catch (err) {
+        console.error("Failed to fetch episode details:", err);
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -572,6 +676,17 @@ export default function App() {
 
             {/* Content Rows - 10 Sections */}
             <div className="px-6 md:px-12 py-8 space-y-10">
+                {/* Recently Watched / Continue Watching */}
+                {history && history.length > 0 && (
+                  <MovieRow 
+                    title="Recently Watched" 
+                    items={history}
+                    onCardClick={openMovieDetails} 
+                    onToggleWatchlist={toggleWatchlist} 
+                    watchlist={watchlist} 
+                  />
+                )}
+
                 {!isPremium && (
                   <motion.div 
                     initial={{ opacity: 0, y: 20 }}
@@ -789,12 +904,32 @@ export default function App() {
                         </h2>
                         
                         <div className="flex flex-wrap items-center gap-3 md:gap-8">
-                            <button 
-                                onClick={() => setPlayingMovie(selectedMovie)}
-                                className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-red-600 text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs hover:bg-white hover:text-black transition-all active:scale-95 shadow-lg shadow-red-600/20"
-                            >
-                                Play Film
-                            </button>
+                            {history.find(h => h.id === selectedMovie.id)?.playback_position && history.find(h => h.id === selectedMovie.id)!.playback_position! > 10 ? (
+                                <>
+                                    <button 
+                                        onClick={() => setPlayingMovie(selectedMovie)}
+                                        className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-red-600 text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs hover:bg-white hover:text-black transition-all active:scale-95 shadow-lg shadow-red-600/20"
+                                    >
+                                        Resume At {Math.floor(history.find(h => h.id === selectedMovie.id)!.playback_position! / 60)}:{(history.find(h => h.id === selectedMovie.id)!.playback_position! % 60).toString().padStart(2, '0')}
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            setHistory(prev => prev.map(h => h.id === selectedMovie.id ? { ...h, playback_position: 0 } : h));
+                                            setPlayingMovie(selectedMovie);
+                                        }}
+                                        className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-white/10 text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs hover:bg-white/20 transition-all border border-white/10 active:scale-95"
+                                    >
+                                        Restart
+                                    </button>
+                                </>
+                            ) : (
+                                <button 
+                                    onClick={() => setPlayingMovie(selectedMovie)}
+                                    className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-red-600 text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs hover:bg-white hover:text-black transition-all active:scale-95 shadow-lg shadow-red-600/20"
+                                >
+                                    Play Film
+                                </button>
+                            )}
                             <button 
                                 onClick={() => {
                                     if (isPremium) {
@@ -855,28 +990,80 @@ export default function App() {
                         </div>
                     </div>
 
-                    {/* Recommendations Sections */}
-                    <div className="pt-20 space-y-20">
-                        {movieDetails?.recommendations?.results && movieDetails.recommendations.results.filter((m: any) => m && m.id).length > 0 && (
-                            <MovieRow 
-                                title="Similar Cinema" 
-                                items={movieDetails.recommendations.results.filter((m: any) => m && m.id).slice(0, 12)} 
-                                onCardClick={openMovieDetails} 
-                                onToggleWatchlist={toggleWatchlist} 
-                                watchlist={watchlist} 
-                            />
+                    {/* TV Episodes Selection */}
+                        {selectedMovie.media_type === 'tv' && movieDetails?.seasons && (
+                            <div className="space-y-10 border-t border-white/5 pt-16">
+                                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                                    <div className="space-y-4">
+                                        <h3 className="text-3xl font-serif italic text-white">Episodes</h3>
+                                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                                            {movieDetails.seasons.filter((s:any) => s.season_number > 0).map((s: any) => (
+                                                <button
+                                                    key={s.id}
+                                                    onClick={() => handleSeasonChange(selectedMovie.id, s.season_number)}
+                                                    className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedSeason === s.season_number ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                                                >
+                                                    {s.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {loadingEpisodes ? (
+                                        [1,2,3].map(i => <div key={i} className="h-24 bg-white/5 animate-pulse rounded-2xl" />)
+                                    ) : episodes.map((ep: any) => (
+                                        <div 
+                                            key={ep.id} 
+                                            onClick={() => playEpisode(ep)}
+                                            className="group bg-white/5 border border-white/5 rounded-2xl p-4 flex gap-4 cursor-pointer hover:bg-white/10 hover:border-white/10 transition-all active:scale-95"
+                                        >
+                                            <div className="w-24 h-16 bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0 relative">
+                                                {ep.still_path ? (
+                                                    <img src={IMAGE_BASE + ep.still_path} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-white/10">
+                                                        <MonitorPlay size={20} />
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Play size={16} className="text-white fill-white" />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <div className="text-[8px] font-black uppercase tracking-widest text-red-600 mb-1">Episode {ep.episode_number}</div>
+                                                <h4 className="text-sm font-bold text-white truncate">{ep.name}</h4>
+                                                <p className="text-[10px] text-white/40 line-clamp-1 mt-1">{ep.overview}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         )}
 
-                        <MovieRow title="Curated for You" items={trending.slice(0, 10)} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} />
-                        <MovieRow title="Critically Acclaimed TV" items={trendingTv.slice(0, 10)} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} />
-                        <MovieRow title="Archive Additions" items={trending.slice(10, 20)} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} />
+                        {/* Recommendations Sections */}
+                        <div className="pt-20 space-y-20 border-t border-white/5">
+                            {movieDetails?.recommendations?.results && movieDetails.recommendations.results.filter((m: any) => m && m.id).length > 0 && (
+                                <MovieRow 
+                                    title="Similar Cinema" 
+                                    items={movieDetails.recommendations.results.filter((m: any) => m && m.id).slice(0, 12)} 
+                                    onCardClick={openMovieDetails} 
+                                    onToggleWatchlist={toggleWatchlist} 
+                                    watchlist={watchlist} 
+                                />
+                            )}
+
+                            <MovieRow title="Curated for You" items={trending.slice(0, 10)} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} />
+                            <MovieRow title="Critically Acclaimed TV" items={trendingTv.slice(0, 10)} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} />
+                            <MovieRow title="Archive Additions" items={trending.slice(10, 20)} onCardClick={openMovieDetails} onToggleWatchlist={toggleWatchlist} watchlist={watchlist} />
+                        </div>
                     </div>
                 </div>
-              </div>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+        </div>
+    )}
+</AnimatePresence>
 
       {/* Player Screen */}
       <AnimatePresence>
@@ -887,23 +1074,20 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[110] bg-black flex flex-col"
             >
-                <div className="absolute top-6 left-6 z-50 flex items-center gap-6">
-                    <button 
-                        onClick={() => setPlayingMovie(null)}
-                        className="p-3 bg-white/5 hover:bg-red-600 rounded-full text-white transition-all shadow-xl backdrop-blur-md"
-                    >
-                        <X size={24} />
-                    </button>
-                    <span className="font-serif italic text-2xl tracking-tighter text-white/90">{playingMovie.title || playingMovie.name}</span>
-                </div>
-                
                 <CustomVideoPlayer 
-                  src={movieDetails?.override_url || "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"}
+                  src={movieDetails?.override_url || movieDetails?.jellyfin_url || "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"}
                   poster={BACKDROP_BASE + playingMovie.backdrop_path}
                   title={playingMovie.title || playingMovie.name}
                   introStart={movieDetails?.intro_start}
                   introEnd={movieDetails?.intro_end}
+                  initialTime={
+                    history.find(h => 
+                      String(h.movie_id || h.id) === String(playingMovie.id) && 
+                      (playingMovie.media_type !== 'tv' || h.season_number === selectedSeason)
+                    )?.playback_position || 0
+                  }
                   onClose={() => setPlayingMovie(null)}
+                  onProgressUpdate={handleProgressUpdate}
                 />
             </motion.div>
         )}
@@ -1191,6 +1375,15 @@ function MovieRow({ title, items, onCardClick, onToggleWatchlist, watchlist, isA
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
           
+          {movie.playback_position && movie.duration && movie.playback_position > 0 && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-10">
+              <div 
+                className="h-full bg-red-600" 
+                style={{ width: `${Math.min((movie.playback_position / movie.duration) * 100, 100)}%` }}
+              />
+            </div>
+          )}
+          
           <button 
               onClick={(e) => onToggleWatchlist(e, movie)}
               className={`absolute top-4 right-4 p-2 rounded bg-black/60 backdrop-blur-md border border-white/10 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-600 ${isInWatchlist ? 'text-red-600 border-red-600/50' : ''}`}
@@ -1277,7 +1470,7 @@ function MovieRow({ title, items, onCardClick, onToggleWatchlist, watchlist, isA
                               </div>
                           </div>
                           <textarea 
-                              value={comment}
+                              value={comment || ''}
                               onChange={(e) => setComment(e.target.value)}
                               className="w-full bg-white/5 border border-white/10 rounded p-6 focus:outline-none focus:border-white/30 min-h-[150px] text-sm text-white/60 leading-relaxed font-sans"
                               placeholder="Your analysis..."
