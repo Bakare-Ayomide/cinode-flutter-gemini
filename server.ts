@@ -43,7 +43,12 @@ ensureUploadsDir();
 // Serve uploads folder
 app.use('/uploads', express.static(uploadDir));
 
-app.use(cors());
+app.use(cors({
+  origin: true, // Reflects the request origin, good for dynamic Vercel previews
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true
+}));
 app.use(express.json());
 
 // MySQL Database Setup with timeout and connection testing
@@ -547,6 +552,47 @@ app.get("/api/movies/details/:type/:id", async (req, res) => {
     res.json(data);
   } catch (err: any) {
     res.status(500).json({ error: `Details Error: ${err.message}` });
+  }
+});
+
+app.get("/api/tv/:id/season/:season_number", async (req, res) => {
+  const { id, season_number } = req.params;
+  try {
+    let data = await tmdbFetch(`/tv/${id}/season/${season_number}`);
+    
+    // Merge overrides for episodes in this season
+    try {
+        if (dbReady) {
+            const [overrides]: any = await pool.execute(
+                'SELECT * FROM media_overrides WHERE tmdb_id = ? AND media_type = "tv" AND season_number = ?',
+                [String(id), Number(season_number)]
+            );
+            
+            if (overrides.length > 0) {
+                data.episodes = data.episodes.map((episode: any) => {
+                    const override = overrides.find((o: any) => o.episode_number === episode.episode_number);
+                    if (override) {
+                        return {
+                            ...episode,
+                            video_url: override.video_url,
+                            intro_start: override.intro_start,
+                            intro_end: override.intro_end,
+                            custom_title: override.custom_title,
+                            custom_overview: override.custom_overview,
+                            has_admin_override: true
+                        };
+                    }
+                    return episode;
+                });
+            }
+        }
+    } catch (dbErr: any) {
+        console.error("DB Season Merge Error:", dbErr.message);
+    }
+
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: `Season Error: ${err.message}` });
   }
 });
 

@@ -21,6 +21,7 @@ class Movie {
   final String? localPath;
   final double? progressTime;
   final double? duration;
+  final List<Season>? seasons;
 
   Movie({
     required this.id,
@@ -43,6 +44,7 @@ class Movie {
     this.localPath,
     this.progressTime,
     this.duration,
+    this.seasons,
   });
 
   factory Movie.fromJson(Map<String, dynamic> json) {
@@ -69,6 +71,9 @@ class Movie {
       recommendations: json['recommendations'] != null && json['recommendations']['results'] != null
         ? (json['recommendations']['results'] as List).map((m) => Movie.fromJson(m)).toList()
         : null,
+      seasons: json['seasons'] != null 
+        ? (json['seasons'] as List).map((s) => Season.fromJson(s)).toList() 
+        : null,
     );
   }
 
@@ -77,5 +82,81 @@ class Movie {
     final date = releaseDate ?? firstAirDate;
     if (date == null || date.isEmpty) return 'N/A';
     return date.split('-')[0];
+  }
+}
+
+class Season {
+  final int id;
+  final int seasonNumber;
+  final int episodeCount;
+  final String name;
+  final String overview;
+  final String? posterPath;
+  final String? airDate;
+
+  Season({
+    required this.id,
+    required this.seasonNumber,
+    required this.episodeCount,
+    required this.name,
+    required this.overview,
+    this.posterPath,
+    this.airDate,
+  });
+
+  factory Season.fromJson(Map<String, dynamic> json) {
+    return Season(
+      id: json['id'],
+      seasonNumber: json['season_number'],
+      episodeCount: json['episode_count'],
+      name: json['name'] ?? '',
+      overview: json['overview'] ?? '',
+      posterPath: json['poster_path'],
+      airDate: json['air_date'],
+    );
+  }
+}
+
+class Episode {
+  final int id;
+  final int episodeNumber;
+  final int seasonNumber;
+  final String name;
+  final String overview;
+  final String? stillPath;
+  final String? airDate;
+  final String? videoUrl;
+  final int? introStart;
+  final int? introEnd;
+  final bool? hasAdminOverride;
+
+  Episode({
+    required this.id,
+    required this.episodeNumber,
+    required this.seasonNumber,
+    required this.name,
+    required this.overview,
+    this.stillPath,
+    this.airDate,
+    this.videoUrl,
+    this.introStart,
+    this.introEnd,
+    this.hasAdminOverride,
+  });
+
+  factory Episode.fromJson(Map<String, dynamic> json) {
+    return Episode(
+      id: json['id'],
+      episodeNumber: json['episode_number'],
+      seasonNumber: json['season_number'],
+      name: json['name'] ?? '',
+      overview: json['overview'] ?? '',
+      stillPath: json['still_path'],
+      airDate: json['air_date'],
+      videoUrl: json['video_url'],
+      introStart: json['intro_start'],
+      introEnd: json['intro_end'],
+      hasAdminOverride: json['has_admin_override'],
+    );
   }
 }

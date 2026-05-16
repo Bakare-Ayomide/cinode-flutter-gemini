@@ -10,11 +10,21 @@ class ApiService {
 
   Future<Movie?> getMovieDetails(String type, String id) async {
     try {
-      final response = await _dio.get('/$type/$id');
+      final response = await _dio.get('/movies/details/$type/$id');
       return Movie.fromJson(response.data);
     } catch (e) {
       print('Error fetching movie details: $e');
       return null;
+    }
+  }
+
+  Future<List<Episode>> getSeasonDetails(String tvId, int seasonNumber) async {
+    try {
+      final response = await _dio.get('/tv/$tvId/season/$seasonNumber');
+      return (response.data['episodes'] as List).map((e) => Episode.fromJson(e)).toList();
+    } catch (e) {
+      print('Error fetching season details: $e');
+      return [];
     }
   }
 

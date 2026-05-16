@@ -87,11 +87,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     _resetControlTimer();
 
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-
     setState(() {});
   }
 
@@ -121,9 +116,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _progressTimer?.cancel();
     _saveProgress();
     _videoPlayerController.dispose();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
     super.dispose();
   }
 

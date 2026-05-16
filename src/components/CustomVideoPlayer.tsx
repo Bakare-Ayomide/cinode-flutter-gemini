@@ -24,6 +24,7 @@ interface CustomVideoPlayerProps {
   movieId: number | string;
   mediaType: string;
   onClose: () => void;
+  onPiPChange?: (active: boolean) => void;
 }
 
 export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({ 
@@ -34,7 +35,8 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   introEnd,
   movieId,
   mediaType,
-  onClose 
+  onClose,
+  onPiPChange
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -51,6 +53,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   const [quality, setQuality] = useState('4K Master');
   const [resumeTime, setResumeTime] = useState<number | null>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [isPiP, setIsPiP] = useState(false);
   const controlsTimeout = useRef<any>(null);
 
   // Sync with API
@@ -116,11 +119,22 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const handlePause = () => setIsPlaying(false);
     const handleCanPlay = () => setIsLoading(false);
 
+    const handleEnterPiP = () => {
+      setIsPiP(true);
+      onPiPChange?.(true);
+    };
+    const handleLeavePiP = () => {
+      setIsPiP(false);
+      onPiPChange?.(false);
+    };
+
     video.addEventListener('progress', updateProgress);
     video.addEventListener('waiting', handleWaiting);
     video.addEventListener('playing', handlePlaying);
     video.addEventListener('pause', handlePause);
     video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('enterpictureinpicture', handleEnterPiP);
+    video.addEventListener('leavepictureinpicture', handleLeavePiP);
 
     return () => {
       video.removeEventListener('progress', updateProgress);
@@ -128,6 +142,8 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       video.removeEventListener('playing', handlePlaying);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('enterpictureinpicture', handleEnterPiP);
+      video.removeEventListener('leavepictureinpicture', handleLeavePiP);
     };
   }, []);
 
@@ -534,7 +550,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                   {/* PiP Button */}
                   <button 
                     onClick={togglePiP} 
-                    className="text-white/60 hover:text-white transition-all active:scale-90"
+                    className={`transition-all active:scale-90 ${isPiP ? 'text-red-500' : 'text-white/60 hover:text-white'}`}
                     title="Picture in Picture"
                   >
                     <MonitorPlay size={18} md:size={20} />

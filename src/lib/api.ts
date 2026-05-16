@@ -1,8 +1,21 @@
 import axios from 'axios';
 import { Movie, MovieDetails, Review, WatchlistItem } from '../types';
 
+const getBaseUrl = () => {
+  const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+  if (envUrl) return envUrl;
+  
+  // If we are likely hosted on Vercel and have no env var set,
+  // default to the AI Studio backend URL.
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    return 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
+  }
+  
+  return ''; // Default to relative path (works for AI Studio preview)
+};
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: getBaseUrl() + '/api',
   timeout: 30000, // 30 seconds to handle slow DB/cloud responses
 });
 
@@ -56,6 +69,7 @@ export const movieApi = {
   saveAdminOverride: (override: any) => api.post('/admin/overrides', override),
   deleteAdminOverride: (id: number) => api.delete(`/admin/overrides/${id}`),
   getPublicSettings: () => api.get('/settings/public').then(res => res.data),
+  getSeasonDetails: (tvId: number, seasonNumber: number) => api.get<any>(`/tv/${tvId}/season/${seasonNumber}`).then(res => res.data),
   getDownloads: () => api.get<any[]>('/downloads').then(res => res.data),
   addToDownloads: (item: any) => api.post('/downloads', item),
   removeFromDownloads: (id: number) => api.delete(`/downloads/${id}`),

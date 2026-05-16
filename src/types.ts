@@ -27,6 +27,38 @@ export interface MovieDetails extends Movie {
   intro_start?: number;
   intro_end?: number;
   has_admin_override?: boolean;
+  seasons?: Season[];
+  recommendations?: {
+    results: Movie[];
+  };
+}
+
+export interface Season {
+  id: number;
+  season_number: number;
+  episode_count: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  air_date: string;
+}
+
+export interface Episode {
+  id: number;
+  episode_number: number;
+  season_number: number;
+  name: string;
+  overview: string;
+  still_path: string | null;
+  air_date: string;
+  video_url?: string;
+  intro_start?: number;
+  intro_end?: number;
+  has_admin_override?: boolean;
+}
+
+export interface SeasonWithEpisodes extends Season {
+  episodes: Episode[];
 }
 
 export interface CastMember {

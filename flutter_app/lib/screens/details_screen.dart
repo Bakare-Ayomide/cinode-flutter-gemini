@@ -19,6 +19,9 @@ class DetailsScreen extends StatefulWidget {
 class _DetailsScreenState extends State<DetailsScreen> {
   late Movie _movie;
   bool _isLoading = true;
+  int? _selectedSeason;
+  List<Episode> _episodes = [];
+  bool _isSeasonLoading = false;
 
   @override
   void initState() {
@@ -36,6 +39,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
           _movie = details;
           _isLoading = false;
         });
+        
+        if (_movie.mediaType == 'tv' && _movie.seasons != null && _movie.seasons!.isNotEmpty) {
+           final firstSeason = _movie.seasons!.firstWhere((s) => s.seasonNumber > 0, orElse: () => _movie.seasons![0]);
+           _fetchSeason(firstSeason.seasonNumber);
+        }
       }
     } else {
       if (mounted) {
@@ -43,6 +51,21 @@ class _DetailsScreenState extends State<DetailsScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _fetchSeason(int seasonNumber) async {
+    setState(() {
+      _selectedSeason = seasonNumber;
+      _isSeasonLoading = true;
+    });
+    final apiService = ApiService();
+    final episodes = await apiService.getSeasonDetails(_movie.id.toString(), seasonNumber);
+    if (mounted) {
+      setState(() {
+        _episodes = episodes;
+        _isSeasonLoading = false;
+      });
     }
   }
 
@@ -204,6 +227,110 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       height: 1.5,
                     ),
                   ),
+                  if (movie.mediaType == 'tv' && movie.seasons != null) ...[
+                    const SizedBox(height: 60),
+                    _buildSectionHeader('SEASONS'),
+                    SizedBox(
+                      height: 50,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: movie.seasons!.where((s) => s.seasonNumber > 0).length,
+                        itemBuilder: (context, index) {
+                          final season = movie.seasons!.where((s) => s.seasonNumber > 0).toList()[index];
+                          final isSelected = _selectedSeason == season.seasonNumber;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: FilterChip(
+                              label: Text('SEASON ${season.seasonNumber}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                              selected: isSelected,
+                              onSelected: (_) => _fetchSeason(season.seasonNumber),
+                              backgroundColor: Colors.white.withOpacity(0.05),
+                              selectedColor: Colors.redAccent,
+                              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white60),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    _buildSectionHeader('EPISODES'),
+                    if (_isSeasonLoading)
+                      const Center(child: CircularProgressIndicator(color: Colors.redAccent))
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _episodes.length,
+                        itemBuilder: (context, index) {
+                          final episode = _episodes[index];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.02),
+                              border: Border.all(color: Colors.white10),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(12),
+                              leading: AspectRatio(
+                                aspectRatio: 16/9,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(4),
+                                    image: episode.stillPath != null ? DecorationImage(
+                                      image: NetworkImage('https://image.tmdb.org/t/p/w500${episode.stillPath}'),
+                                      fit: BoxFit.cover,
+                                    ) : null,
+                                    color: Colors.white10,
+                                  ),
+                                  child: episode.stillPath == null ? const Icon(Icons.play_circle, color: Colors.white24) : null,
+                                ),
+                              ),
+                              title: Text(
+                                'EP ${episode.episodeNumber}: ${episode.name}',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  episode.overview,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.white38, fontSize: 11, height: 1.4),
+                                ),
+                              ),
+                              trailing: const Icon(Icons.play_arrow_rounded, color: Colors.redAccent),
+                              onTap: () {
+                                 final epMovie = Movie(
+                                   id: movie.id,
+                                   title: '${movie.displayTitle} - S${episode.seasonNumber}E${episode.episodeNumber}: ${episode.name}',
+                                   posterPath: movie.posterPath,
+                                   mediaType: 'tv',
+                                   voteAverage: movie.voteAverage,
+                                   backdropPath: episode.stillPath ?? movie.backdropPath,
+                                   videoUrl: episode.videoUrl ?? movie.videoUrl ?? movie.overrideUrl ?? "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                                   introStart: episode.introStart,
+                                   introEnd: episode.introEnd,
+                                   hasAdminOverride: episode.hasAdminOverride,
+                                 );
+                                 ApiService().addToHistory(widget.userEmail, epMovie);
+                                 Navigator.push(
+                                   context,
+                                   MaterialPageRoute(
+                                     builder: (context) => VideoPlayerScreen(
+                                       movie: epMovie,
+                                       url: epMovie.videoUrl!,
+                                       userEmail: widget.userEmail,
+                                     ),
+                                   ),
+                                 );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                  ],
                   const SizedBox(height: 60),
                   if (movie.recommendations != null && movie.recommendations!.isNotEmpty) ...[
                     _buildSectionHeader('SIMILAR TITLES'),

@@ -22,6 +22,7 @@ import {
   Gem,
   Bell,
   ArrowUpRight,
+  Maximize,
   Sun,
   Moon
 } from 'lucide-react';
@@ -62,6 +63,11 @@ export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [isSeasonLoading, setIsSeasonLoading] = useState(false);
+  const [isPiPActive, setIsPiPActive] = useState(false);
+  const [showPlayerScreen, setShowPlayerScreen] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'watchlist' | 'search' | 'admin' | 'downloads' | 'profile' | 'affiliate'>('home');
   const [isPremium, setIsPremium] = useState(false);
   const [isAffiliate, setIsAffiliate] = useState(false);
@@ -119,23 +125,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [user]);
 
-  useEffect(() => {
-    if (playingMovie) {
-      const videoEl = document.querySelector('video');
-      if (videoEl && videoEl.requestFullscreen) {
-        videoEl.requestFullscreen().catch(() => {
-          // Ignore if blocked by browser
-        });
-      }
-      
-      // Try to lock orientation if supported
-      if (screen.orientation && (screen.orientation as any).lock) {
-        (screen.orientation as any).lock('landscape').catch(() => {
-          // Ignore if not supported (e.g. desktop or non-mobile)
-        });
-      }
-    }
-  }, [playingMovie]);
 
   const checkAdminStatus = async () => {
     // Hardcoded fallback for the requested admin to ensure access
@@ -170,7 +159,14 @@ export default function App() {
 
   const checkDbStatus = async () => {
     try {
-      const res = await fetch('/api/health');
+      const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+      let baseUrl = envUrl;
+      
+      if (!baseUrl && typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+        baseUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
+      }
+
+      const res = await fetch(`${baseUrl}/api/health`);
       const data = await res.json();
       setDbStatus(data.dbConnected);
       if (!data.dbConnected) {
@@ -323,9 +319,21 @@ export default function App() {
     const type = movie.media_type || 'movie';
     setSelectedMovie(movie);
     setMovieDetails(null);
+    setSelectedSeason(null);
+    setEpisodes([]);
+    
     try {
       const data = await movieApi.getDetails(type, movie.id);
       setMovieDetails(data);
+      
+      if (type === 'tv' && data.seasons && data.seasons.length > 0) {
+        // Auto-fetch first season
+        const firstSeason = data.seasons.find(s => s.season_number > 0) || data.seasons[0];
+        if (firstSeason) {
+          fetchSeason(movie.id, firstSeason.season_number);
+        }
+      }
+
       // Add to history
       if (user) {
         await movieApi.addToHistory({
@@ -338,6 +346,19 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchSeason = async (tvId: number, seasonNumber: number) => {
+    setSelectedSeason(seasonNumber);
+    setIsSeasonLoading(true);
+    try {
+      const data = await movieApi.getSeasonDetails(tvId, seasonNumber);
+      setEpisodes(data.episodes || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSeasonLoading(false);
     }
   };
 
@@ -811,7 +832,10 @@ export default function App() {
                         
                         <div className="flex flex-wrap items-center gap-3 md:gap-8">
                             <button 
-                                onClick={() => setPlayingMovie(selectedMovie)}
+                                onClick={() => {
+                                    setPlayingMovie(selectedMovie);
+                                    setShowPlayerScreen(true);
+                                }}
                                 className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-red-600 text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs hover:bg-white hover:text-black transition-all active:scale-95 shadow-lg shadow-red-600/20"
                             >
                                 Play Film
@@ -876,6 +900,97 @@ export default function App() {
                         </div>
                     </div>
 
+                    {/* TV Show Specific: Seasons and Episodes */}
+                    {selectedMovie.media_type === 'tv' && movieDetails?.seasons && (
+                        <div className="pt-20 space-y-12">
+                            <div className="space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm md:text-base uppercase tracking-[0.3em] font-bold text-white/40">Seasons</h3>
+                                    <span className="text-[10px] text-white/20 uppercase tracking-widest">{movieDetails.seasons.length} Seasons</span>
+                                </div>
+                                <div className="flex flex-wrap gap-3 md:gap-4 overflow-x-auto no-scrollbar pb-2">
+                                    {movieDetails.seasons.filter(s => s.season_number > 0).map(season => (
+                                        <button 
+                                            key={season.id}
+                                            onClick={() => fetchSeason(selectedMovie.id, season.season_number)}
+                                            className={`flex-none px-6 py-3 rounded-xl text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all border ${selectedSeason === season.season_number ? 'bg-red-600 text-white border-red-600 shadow-lg shadow-red-600/20' : 'bg-white/5 text-white/40 border-white/5 hover:border-white/20 hover:text-white'}`}
+                                        >
+                                            Season {season.season_number}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm md:text-base uppercase tracking-[0.3em] font-bold text-white/40">Episodes</h3>
+                                    <span className="text-[10px] text-white/20 uppercase tracking-widest">{episodes.length} Episodes</span>
+                                </div>
+                                
+                                {isSeasonLoading ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                                        {[1,2,3,4,5,6].map(i => (
+                                            <div key={i} className="h-40 bg-white/5 rounded-2xl border border-white/5" />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {episodes.map(episode => (
+                                            <motion.div 
+                                                key={episode.id}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="group relative bg-[#121214] border border-white/5 rounded-2xl overflow-hidden hover:border-white/20 transition-all cursor-pointer"
+                                                onClick={() => {
+                                                    const epMovie = { 
+                                                        ...selectedMovie, 
+                                                        title: `${selectedMovie.name || selectedMovie.title} - S${episode.season_number}E${episode.episode_number}: ${episode.name}`,
+                                                        media_type: 'tv' as const
+                                                    };
+                                                    if (episode.video_url) {
+                                                       setMovieDetails(prev => prev ? { ...prev, override_url: episode.video_url, intro_start: episode.intro_start, intro_end: episode.intro_end } : null);
+                                                    } else {
+                                                       // Reset overrides if episode doesn't have them
+                                                       setMovieDetails(prev => prev ? { ...prev, override_url: undefined, intro_start: undefined, intro_end: undefined } : null);
+                                                    }
+                                                    setPlayingMovie(epMovie);
+                                                    setShowPlayerScreen(true);
+                                                }}
+                                            >
+                                                <div className="aspect-video w-full relative overflow-hidden">
+                                                    {episode.still_path ? (
+                                                        <img src={IMAGE_BASE + episode.still_path} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt="" />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                                                            <Play size={32} className="text-white/10" />
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                                                    <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+                                                        <div className="space-y-1">
+                                                            <span className="text-[8px] font-black uppercase tracking-widest text-red-500">Episode {episode.episode_number}</span>
+                                                            <h4 className="text-[11px] md:text-sm font-bold text-white line-clamp-1">{episode.name}</h4>
+                                                        </div>
+                                                        <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0">
+                                                            <Play size={14} fill="white" className="text-white ml-0.5" />
+                                                        </div>
+                                                    </div>
+                                                    {episode.has_admin_override && (
+                                                        <div className="absolute top-3 right-3 px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/30 rounded text-[7px] font-black uppercase tracking-widest text-yellow-500 backdrop-blur-sm">Exclusive Source</div>
+                                                    )}
+                                                </div>
+                                                <div className="p-4 space-y-2">
+                                                    <p className="text-[10px] text-white/40 leading-relaxed line-clamp-2 font-serif italic">{episode.overview || "No overview available for this episode."}</p>
+                                                    <div className="text-[8px] text-white/20 font-bold uppercase tracking-widest">{episode.air_date ? new Date(episode.air_date).toLocaleDateString() : 'Unknown Air Date'}</div>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Recommendations Sections */}
                     <div className="pt-20 space-y-20">
                         {movieDetails?.recommendations?.results && movieDetails.recommendations.results.filter((m: any) => m && m.id).length > 0 && (
@@ -904,19 +1019,24 @@ export default function App() {
         {playingMovie && (
             <motion.div 
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                animate={{ opacity: showPlayerScreen ? 1 : 0 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[110] bg-black flex flex-col"
+                className={`fixed inset-0 z-[110] bg-black flex flex-col ${showPlayerScreen ? 'pointer-events-auto' : 'pointer-events-none'}`}
             >
-                <div className="absolute top-6 left-6 z-50 flex items-center gap-6">
-                    <button 
-                        onClick={() => setPlayingMovie(null)}
-                        className="p-3 bg-white/5 hover:bg-red-600 rounded-full text-white transition-all shadow-xl backdrop-blur-md"
-                    >
-                        <X size={24} />
-                    </button>
-                    <span className="font-serif italic text-2xl tracking-tighter text-white/90">{playingMovie.title || playingMovie.name}</span>
-                </div>
+                {showPlayerScreen && (
+                    <div className="absolute top-6 left-6 z-50 flex items-center gap-6">
+                        <button 
+                            onClick={() => {
+                                setShowPlayerScreen(false);
+                                if (!isPiPActive) setPlayingMovie(null);
+                            }}
+                            className="p-3 bg-white/5 hover:bg-red-600 rounded-full text-white transition-all shadow-xl backdrop-blur-md"
+                        >
+                            <X size={24} />
+                        </button>
+                        <span className="font-serif italic text-2xl tracking-tighter text-white/90">{playingMovie.title || playingMovie.name}</span>
+                    </div>
+                )}
                 
                 <CustomVideoPlayer 
                   src={movieDetails?.override_url || "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"}
@@ -927,9 +1047,11 @@ export default function App() {
                   introStart={movieDetails?.intro_start}
                   introEnd={movieDetails?.intro_end}
                   onClose={() => {
-                    setPlayingMovie(null);
+                    setShowPlayerScreen(false);
+                    if (!isPiPActive) setPlayingMovie(null);
                     fetchInitialData(); // Refresh history
                   }}
+                  onPiPChange={setIsPiPActive}
                 />
             </motion.div>
         )}
@@ -984,6 +1106,27 @@ export default function App() {
       <AnimatePresence>
         {showDownloadApp && (
             <DownloadAppModal onClose={() => setShowDownloadApp(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Playback Mini-UI for PiP */}
+      <AnimatePresence>
+        {isPiPActive && !showPlayerScreen && (
+            <motion.button 
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 50 }}
+                onClick={() => setShowPlayerScreen(true)}
+                className="fixed bottom-24 right-8 z-[200] flex items-center gap-4 bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl hover:scale-105 active:scale-95 transition-all group"
+            >
+                <div className="flex flex-col items-start leading-none text-left">
+                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/60 mb-1">Now Playing in PiP</span>
+                    <span className="text-[10px] font-bold truncate max-w-[120px]">{playingMovie?.title || playingMovie?.name}</span>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <Maximize size={14} className="group-hover:scale-110 transition-transform" />
+                </div>
+            </motion.button>
         )}
       </AnimatePresence>
     </div>
