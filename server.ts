@@ -1645,12 +1645,30 @@ app.post("/api/admin/users/revoke-premium", ensureDB, adminOnly, async (req, res
     }
 });
 
-app.delete("/api/admin/users/:email", ensureDB, adminOnly, async (req, res) => {
-    const { email } = req.params;
+app.delete("/api/admin/users/:id", ensureDB, adminOnly, async (req, res) => {
+    const { id } = req.params;
+    const adminEmail = req.headers["x-user-email"];
+    console.log(`Admin ${adminEmail} is attempting to delete user ID: ${id}`);
+    
     try {
-      await pool.execute('DELETE FROM users WHERE email = ?', [email]);
+      // Find the user first to check if they are a core admin
+      const [users]: any = await pool.execute('SELECT email FROM users WHERE id = ?', [id]);
+      if (users.length === 0) {
+          return res.status(404).json({ error: "User not found" });
+      }
+      
+      const email = users[0].email;
+      const coreAdmins = ['contactzerolord@gmail.com', 'earr.music@gmail.com'];
+      if (coreAdmins.includes(email.toLowerCase())) {
+          console.warn(`Blocked attempt to delete core admin: ${email}`);
+          return res.status(403).json({ error: "Cannot delete core system administrator" });
+      }
+
+      await pool.execute('DELETE FROM users WHERE id = ?', [id]);
+      console.log(`Successfully deleted user ID: ${id} (${email})`);
       res.json({ success: true });
     } catch (err: any) {
+      console.error(`Delete user failed for ID ${id}:`, err.message);
       res.status(500).json({ error: `Delete user failed: ${err.message}` });
     }
 });

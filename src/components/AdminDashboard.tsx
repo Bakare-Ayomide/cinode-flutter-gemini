@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { 
+  Search,
   Users, 
   Settings, 
   Film, 
@@ -44,7 +45,8 @@ const AdminDashboard: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'content' | 'settings' | 'payments' | 'payconfig' | 'affiliates' | 'ads' | 'notifications'>('stats');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{id: number | string, email: string} | null>(null);
 
   // Form states
   const [newOverride, setNewOverride] = useState<any>({
@@ -128,9 +130,8 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const showMsg = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
+  const showMsg = (type: 'success' | 'error' | 'info', text: string) => {
+    window.dispatchEvent(new CustomEvent('app-notify', { detail: { type, text } }));
   };
 
   const handlePromote = async (email: string, currentStatus: boolean) => {
@@ -143,13 +144,17 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (email: string) => {
+  const handleDeleteUser = async (id: number | string, email: string) => {
     try {
-      await movieApi.deleteUser(email);
-      showMsg('success', 'User deleted');
+      setLoading(true);
+      await movieApi.deleteUser(id);
+      showMsg('success', `Entity ${email} has been purged from reality`);
+      setDeleteConfirm(null);
       fetchData();
-    } catch (err) {
-      showMsg('error', 'Delete failed');
+    } catch (err: any) {
+      showMsg('error', `Purge failed: ${err.message || 'Access Denied'}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -252,35 +257,55 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0A0A0B] text-white">
-      {/* Header */}
-      <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#0D0D0E]">
-        <div className="flex items-center gap-4">
-          <div className="p-2 bg-red-600 rounded-lg">
-            <ShieldCheck size={24} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Admin Console</h1>
-            <p className="text-xs text-white/40 uppercase tracking-widest font-medium">God Mode Activated</p>
-          </div>
-        </div>
-        
-        <AnimatePresence>
-          {message && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className={`px-4 py-2 rounded text-xs font-bold uppercase tracking-widest flex items-center gap-2 ${message.type === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}
-            >
-              {message.type === 'success' ? <Check size={14} /> : <X size={14} />}
-              {message.text}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+    <div className="flex flex-col h-full bg-[#0A0A0B] text-white relative">
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
+              <motion.div 
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  className="max-w-md w-full bg-[#121214] border border-red-600/30 rounded-[3rem] p-10 space-y-8 shadow-[0_0_100px_rgba(220,38,38,0.15)] relative overflow-hidden"
+              >
+                  <div className="absolute top-0 right-0 p-20 -mr-10 -mt-10 bg-red-600/10 rounded-full blur-[80px] pointer-events-none"></div>
+                  
+                  <div className="relative z-10 text-center space-y-6">
+                      <div className="w-20 h-20 bg-red-600/10 rounded-full flex items-center justify-center mx-auto border border-red-600/20 shadow-[0_0_40px_rgba(220,38,38,0.3)]">
+                          <Trash2 size={40} className="text-red-500" />
+                      </div>
+                      <div className="space-y-3">
+                          <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic font-serif">Critical Purge</h2>
+                          <p className="text-[10px] text-white/40 leading-relaxed uppercase tracking-[0.3em] font-black italic">
+                              You are about to permanently erase <span className="text-red-500 font-serif lowercase italic text-base px-1">{deleteConfirm.email}</span> from the system archives.
+                          </p>
+                      </div>
+                  </div>
 
-      <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
+                  <div className="relative z-10 flex flex-col gap-4">
+                      <button 
+                          onClick={() => handleDeleteUser(deleteConfirm.id, deleteConfirm.email)}
+                          disabled={loading}
+                          className="w-full py-5 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-[0.4em] text-[11px] rounded-[1.5rem] transition-all shadow-xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+                      >
+                          {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 size={16} />}
+                          {loading ? 'Purging Archive...' : 'Confirm Absolute Purge'}
+                      </button>
+                      <button 
+                          onClick={() => setDeleteConfirm(null)}
+                          disabled={loading}
+                          className="w-full py-5 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white font-black uppercase tracking-[0.4em] text-[11px] rounded-[1.5rem] transition-all active:scale-95 border border-white/10"
+                      >
+                          Abort Signal
+                      </button>
+                  </div>
+              </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Tab Navigation moved to a subheader pattern */}
+      <div className="flex flex-1 flex-col md:flex-row overflow-hidden pt-4">
         {/* Sidebar / Mobile Nav */}
         <div className="flex md:flex-col items-center md:items-stretch overflow-x-auto md:overflow-x-visible border-b md:border-b-0 md:border-r border-white/5 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1 no-scrollbar bg-gray-50/50 bg-[#0D0D0E]/50 md:bg-transparent md:w-64">
           <button 
@@ -1083,7 +1108,7 @@ const AdminDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="text-gray-700 text-[#E1E1E1]">
-                    {users.map((user) => (
+                    {users.filter(u => u.email.toLowerCase().includes(searchFilter.toLowerCase())).map((user) => (
                       <tr key={user.email} className="border-b border-white/5 hover:bg-gray-200/50 hover:bg-white/[0.02]">
                         <td className="px-4 md:px-6 py-4">
                           <div className="flex flex-col">
@@ -1154,7 +1179,7 @@ const AdminDashboard: React.FC = () => {
                                <ShieldCheck size={16} />
                             </button>
                             <button 
-                              onClick={() => handleDeleteUser(user.email)}
+                              onClick={() => setDeleteConfirm({id: user.id, email: user.email})}
                               className="p-2 hover:bg-red-600/20 rounded-lg transition-all hover:text-red-500"
                               title="Delete User"
                             >
@@ -1292,7 +1317,7 @@ const AdminDashboard: React.FC = () => {
               <div className="space-y-6">
                 <h2 className="text-xl md:text-2xl font-serif italic uppercase text-white">Active Vault</h2>
                 <div className="grid grid-cols-1 gap-4">
-                  {overrides.map(ov => (
+                  {overrides.filter(ov => (ov.title?.toLowerCase().includes(searchFilter.toLowerCase()) || ov.tmdb_id.toString().includes(searchFilter))).map(ov => (
                     <div key={ov.id} className="p-4 md:p-6 bg-[#0D0D0E] border border-white/5 rounded-xl flex items-center gap-4 shadow-sm">
                       <div className="w-10 h-10 md:w-12 md:h-12 flex-shrink-0 bg-white/5 rounded-lg flex items-center justify-center text-white/20">
                         <Film size={20} />

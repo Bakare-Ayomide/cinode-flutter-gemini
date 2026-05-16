@@ -19,6 +19,8 @@ import {
   Shield,
   Download,
   Trash2,
+  CheckCircle,
+  AlertCircle,
   Gem,
   Bell,
   ArrowUpRight,
@@ -59,6 +61,20 @@ export default function App() {
   const [recentlyPlayed, setRecentlyPlayed] = useState<any[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [globalNotify, setGlobalNotify] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
+
+  const showGlobalMessage = (type: 'success' | 'error' | 'info', text: string) => {
+    setGlobalNotify({ type, text });
+    setTimeout(() => setGlobalNotify(null), 5000);
+  };
+
+  useEffect(() => {
+    const handleNotify = (e: any) => {
+        showGlobalMessage(e.detail.type, e.detail.text);
+    };
+    window.addEventListener('app-notify', handleNotify);
+    return () => window.removeEventListener('app-notify', handleNotify);
+  }, []);
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
@@ -504,9 +520,6 @@ export default function App() {
             <NavIcon active={activeTab === 'search'} onClick={() => { setActiveTab('search'); setIsSidebarOpen(false); }} icon={<Search size={20} />} />
             <NavIcon active={activeTab === 'watchlist'} onClick={() => { setActiveTab('watchlist'); setIsSidebarOpen(false); }} icon={<Bookmark size={20} />} />
             <NavIcon active={activeTab === 'downloads'} onClick={() => { setActiveTab('downloads'); setIsSidebarOpen(false); }} icon={<Download size={20} />} />
-            <div className="py-2 border-t border-white/5 w-8 flex justify-center">
-               <NotificationBell />
-            </div>
             {isAffiliate && (
               <NavIcon active={activeTab === 'affiliate'} onClick={() => { setActiveTab('affiliate'); setIsSidebarOpen(false); }} icon={<ArrowUpRight size={20} />} />
             )}
@@ -536,12 +549,62 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className={`flex-1 flex flex-col overflow-y-auto no-scrollbar relative transition-opacity duration-300 ${isSidebarOpen ? 'opacity-20 pointer-events-none md:opacity-100 md:pointer-events-auto' : 'opacity-100'}`}>
+        {/* HUD Layer - Purely transparent floating icons anchored to viewport */}
+        <div className="fixed top-0 right-0 p-6 md:p-12 flex items-center gap-6 z-[60] pointer-events-none">
+            <div className="flex items-center gap-4 md:gap-6 pointer-events-auto">
+                <button 
+                    onClick={() => setActiveTab('search')}
+                    className="p-2 text-white/40 hover:text-white transition-all group"
+                    title="Search Library"
+                >
+                    <Search size={22} className="group-hover:scale-110 transition-transform" />
+                </button>
+                <NotificationBell />
+            </div>
+        </div>
+
         {!dbStatus && (
             <div className="bg-red-600/10 border-b border-red-600/20 px-12 py-2 flex items-center justify-between">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">Database Offline: Watchlist and Reviews are in read-only/demo mode.</p>
                 <button onClick={checkDbStatus} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white">Retry Connection</button>
             </div>
         )}
+        {/* Global Notifications Overlay */}
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[10000] pointer-events-none w-full max-w-sm px-4">
+            <AnimatePresence mode="wait">
+            {globalNotify && (
+                <motion.div 
+                    key={globalNotify.text}
+                    initial={{ opacity: 0, y: -40, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                    className={`px-6 py-4 rounded-3xl shadow-2xl backdrop-blur-2xl border flex items-center gap-4 pointer-events-auto border-white/10 ${
+                        globalNotify.type === 'success' ? 'bg-green-500/10 text-green-500' : 
+                        globalNotify.type === 'error' ? 'bg-red-500/10 text-red-500' : 
+                        'bg-blue-500/10 text-blue-500'
+                    }`}
+                >
+                    <div className={`p-2 rounded-2xl ${
+                        globalNotify.type === 'success' ? 'bg-green-500/20' : 
+                        globalNotify.type === 'error' ? 'bg-red-500/20' : 
+                        'bg-blue-500/20'
+                    }`}>
+                        {globalNotify.type === 'success' ? <CheckCircle size={20} /> : 
+                         globalNotify.type === 'error' ? <AlertCircle size={20} /> : 
+                         <Info size={20} />}
+                    </div>
+                    <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40 mb-0.5">System Alert</p>
+                        <p className="text-xs font-bold tracking-tight leading-tight">{globalNotify.text}</p>
+                    </div>
+                    <button onClick={() => setGlobalNotify(null)} className="ml-auto p-1.5 hover:bg-white/5 rounded-xl transition-colors">
+                        <X size={16} className="opacity-30 hover:opacity-100" />
+                    </button>
+                </motion.div>
+            )}
+            </AnimatePresence>
+        </div>
+
         {activeTab === 'home' && (
           <div className="pb-32">
             {/* Hero Section */}
@@ -734,8 +797,19 @@ export default function App() {
                  value={searchQuery}
                  onChange={(e) => handleSearch(e.target.value)}
                  placeholder="SEARCH TITLES..."
-                 className="w-full bg-transparent border-b-2 border-white/10 py-10 pl-16 pr-8 text-3xl md:text-5xl focus:outline-none focus:border-red-600 transition-all font-serif italic tracking-tighter placeholder:text-white/5 uppercase text-white"
+                 className="w-full bg-transparent border-b-2 border-white/10 py-10 pl-16 pr-24 text-3xl md:text-5xl focus:outline-none focus:border-red-600 transition-all font-serif italic tracking-tighter placeholder:text-white/5 uppercase text-white"
                />
+               <button 
+                 onClick={() => {
+                   setSearchQuery('');
+                   setSearchResults([]);
+                   setActiveTab('home');
+                 }}
+                 className="absolute right-0 top-1/2 -translate-y-1/2 p-4 text-white/20 hover:text-white transition-all hover:scale-110 active:scale-95"
+                 title="Cancel Search"
+               >
+                 <X size={32} />
+               </button>
              </div>
  
              {searchResults.length > 0 ? (

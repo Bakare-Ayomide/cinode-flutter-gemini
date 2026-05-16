@@ -62,7 +62,7 @@ export const movieApi = {
   getAdminStats: () => api.get('/admin/stats').then(res => res.data),
   getAdminUsers: () => api.get('/admin/users').then(res => res.data),
   promoteUser: (email: string, is_admin: boolean) => api.post('/admin/users/promote', { email, is_admin }),
-  deleteUser: (email: string) => api.delete(`/admin/users/${email}`),
+  deleteUser: (id: number | string) => api.delete(`/admin/users/${id}`),
   getAdminSettings: () => api.get('/admin/settings').then(res => res.data),
   saveAdminSetting: (key: string, value: string) => api.post('/admin/settings', { key, value }),
   getAdminOverrides: () => api.get('/admin/overrides').then(res => res.data),
