@@ -26,12 +26,10 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   Future<void> _loadWatchlist() async {
     final api = context.read<ApiService>();
     final list = await api.getWatchlist(widget.userEmail);
-    if (mounted) {
-      setState(() {
-        _watchlist = list;
-        _isLoading = false;
-      });
-    }
+    setState(() {
+      _watchlist = list;
+      _isLoading = false;
+    });
   }
 
   @override

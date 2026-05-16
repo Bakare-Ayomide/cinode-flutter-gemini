@@ -8,26 +8,13 @@ class ApiService {
     baseUrl: 'https://ais-dev-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app/api',
   ));
 
-  Future<Movie?> getMovieDetails(String type, String id, {int? s, int? e}) async {
+  Future<Movie?> getMovieDetails(String type, String id) async {
     try {
-      final response = await _dio.get('/movies/details/$type/$id', queryParameters: {
-        if (s != null) 's': s,
-        if (e != null) 'e': e,
-      });
+      final response = await _dio.get('/$type/$id');
       return Movie.fromJson(response.data);
     } catch (e) {
       print('Error fetching movie details: $e');
       return null;
-    }
-  }
-
-  Future<Map<String, dynamic>> getTvSeason(int id, int seasonNumber) async {
-    try {
-      final response = await _dio.get('/tv/$id/season/$seasonNumber');
-      return response.data;
-    } catch (e) {
-      print('Error fetching season details: $e');
-      return {};
     }
   }
 
@@ -43,7 +30,7 @@ class ApiService {
     }
   }
 
-  Future<void> addToHistory(String email, Movie movie, {int? position, int? duration, int? season, int? episode, String? episodeName}) async {
+  Future<void> addToHistory(String email, Movie movie) async {
     try {
       await _dio.post('/history', data: {
         'user_email': email,
@@ -51,11 +38,6 @@ class ApiService {
         'title': movie.displayTitle,
         'poster_path': movie.posterPath,
         'media_type': movie.mediaType,
-        'playback_position': position ?? movie.playbackPosition,
-        'duration': duration ?? movie.duration,
-        'season_number': season ?? movie.seasonNumber,
-        'episode_number': episode ?? movie.episodeNumber,
-        'episode_name': episodeName ?? movie.episodeName,
       });
     } catch (e) {
       print('Error adding to history: $e');
@@ -127,16 +109,6 @@ class ApiService {
     }
   }
 
-  Future<List<Movie>> getTrending() async {
-    try {
-      final response = await _dio.get('/movies/trending');
-      return (response.data['results'] as List).map((m) => Movie.fromJson(m)).toList();
-    } catch (e) {
-      print('Error fetching trending: $e');
-      return [];
-    }
-  }
-
   Future<List<Movie>> getRecommendations(String email) async {
     try {
       final response = await _dio.get(
@@ -193,7 +165,6 @@ class ApiService {
   Future<String?> downloadFile(String url, String fileName) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
-      // Ensure the directory exists
       final downloadDir = Directory('${directory.path}/downloads');
       if (!await downloadDir.exists()) {
         await downloadDir.create(recursive: true);
@@ -214,7 +185,6 @@ class ApiService {
 
   Future<void> removeFromDownloads(String email, int movieId) async {
     try {
-      // Find the movie first to get the local path and delete the file
       final downloads = await getDownloads(email);
       final movie = downloads.firstWhere((m) => m.id == movieId);
       if (movie.localPath != null) {
@@ -241,6 +211,31 @@ class ApiService {
       'poster_path': movie.posterPath,
       'media_type': movie.mediaType,
     });
+  }
+
+  // Playback Progress
+  Future<Map<String, dynamic>> getPlaybackProgress(String email, String type, String id) async {
+    try {
+      final response = await _dio.get(
+        '/playback/progress/$type/$id',
+        options: Options(headers: {'x-user-email': email}),
+      );
+      return response.data;
+    } catch (e) {
+      return {'progress_time': 0.0, 'duration': 0.0};
+    }
+  }
+
+  Future<void> savePlaybackProgress(String email, Map<String, dynamic> data) async {
+    try {
+      await _dio.post(
+        '/playback/progress',
+        data: data,
+        options: Options(headers: {'x-user-email': email}),
+      );
+    } catch (e) {
+      print('Save playback progress error: $e');
+    }
   }
 
   // Payments & Checkout
@@ -284,18 +279,6 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getAdminStats(String email) async {
-    try {
-      final response = await _dio.get(
-        '/admin/stats',
-        options: Options(headers: {'x-user-email': email}),
-      );
-      return response.data;
-    } catch (e) {
-      return {};
-    }
-  }
-
   Future<List<dynamic>> getUserPayments(String email) async {
     try {
       final response = await _dio.get(
@@ -318,6 +301,17 @@ class ApiService {
       return response.data;
     } catch (e) {
       return null;
+    }
+  }
+
+  Future<void> requestPayout(String email) async {
+    try {
+      await _dio.post(
+        '/affiliate/payout-request',
+        options: Options(headers: {'x-user-email': email}),
+      );
+    } catch (e) {
+      print('Payout request error: $e');
     }
   }
 
@@ -617,53 +611,5 @@ class ApiService {
       print('Search error: $e');
       return [];
     }
-  }
-
-  // Jellyfin
-  Future<List<dynamic>> getAdminJellyfinServers(String email) async {
-    try {
-      final response = await _dio.get(
-        '/admin/jellyfin/servers',
-        options: Options(headers: {'x-user-email': email}),
-      );
-      return response.data;
-    } catch (e) {
-      return [];
-    }
-  }
-
-  Future<void> saveAdminJellyfinServer(String email, Map<String, dynamic> server) async {
-    await _dio.post(
-      '/admin/jellyfin/servers',
-      data: server,
-      options: Options(headers: {'x-user-email': email}),
-    );
-  }
-
-  Future<void> deleteAdminJellyfinServer(String email, int id) async {
-    await _dio.delete(
-      '/admin/jellyfin/servers/$id',
-      options: Options(headers: {'x-user-email': email}),
-    );
-  }
-
-  Future<List<dynamic>> getAdminSettings(String email) async {
-    try {
-      final response = await _dio.get(
-        '/admin/settings',
-        options: Options(headers: {'x-user-email': email}),
-      );
-      return response.data;
-    } catch (e) {
-      return [];
-    }
-  }
-
-  Future<void> saveAdminSetting(String email, String key, String value) async {
-    await _dio.post(
-      '/admin/settings',
-      data: {'key': key, 'value': value},
-      options: Options(headers: {'x-user-email': email}),
-    );
   }
 }

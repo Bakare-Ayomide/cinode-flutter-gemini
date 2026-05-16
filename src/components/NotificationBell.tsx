@@ -66,11 +66,12 @@ export const NotificationBell: React.FC = () => {
     <div className="relative">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-full hover:bg-white/10 transition-colors"
+        className="relative p-2.5 bg-[#0D0D0E]/80 backdrop-blur-md rounded-xl border border-white/5 text-white/40 hover:text-white hover:border-white/20 transition-all hover:scale-105 active:scale-95 shadow-lg group"
+        title="Notifications"
       >
-        <Bell size={24} className={unreadCount > 0 ? "text-red-500" : "text-gray-400"} />
+        <Bell size={22} className={unreadCount > 0 ? "text-red-500" : "group-hover:scale-110 transition-transform"} />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-600 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-[10px] font-black flex items-center justify-center rounded-full animate-pulse shadow-lg">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

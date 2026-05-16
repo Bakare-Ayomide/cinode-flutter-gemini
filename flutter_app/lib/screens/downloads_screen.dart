@@ -23,14 +23,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   }
 
   Future<void> _loadDownloads() async {
-    if (mounted) setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
     final items = await ApiService().getDownloads(widget.userEmail);
-    if (mounted) {
-      setState(() {
-        _downloadedItems = items;
-        _isLoading = false;
-      });
-    }
+    setState(() {
+      _downloadedItems = items;
+      _isLoading = false;
+    });
   }
 
   Future<void> _removeDownload(int movieId) async {

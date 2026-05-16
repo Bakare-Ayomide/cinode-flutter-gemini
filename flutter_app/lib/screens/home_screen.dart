@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Movie> _comedy = [];
   List<Movie> _horror = [];
   List<Movie> _upcoming = [];
-  List<Movie> _history = [];
+  List<Movie> _recommendations = [];
   List<dynamic> _ads = [];
   bool _isLoading = true;
   bool _isSidebarCollapsed = false;
@@ -122,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _comedy = results[2] as List<Movie>;
       _horror = results[3] as List<Movie>;
       _upcoming = results[4] as List<Movie>;
-      _history = results[5] as List<Movie>;
+      _recommendations = results[5] as List<Movie>;
       _ads = results[6] as List<dynamic>;
       _isLoading = false;
     });
@@ -193,20 +193,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: const Icon(Icons.logout, color: Colors.white24),
                       onPressed: _handleLogout,
                     ),
-                    const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedIndex = 5;
-                          _isSidebarCollapsed = true;
-                        });
-                      },
-                      child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: _selectedIndex == 5 ? Colors.redAccent : Colors.orange,
-                        child: _selectedIndex == 5 ? const Icon(Icons.person, size: 16, color: Colors.white) : null,
-                      ),
-                    ),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -241,27 +227,34 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            IconButton(
-                              icon: Stack(
-                                children: [
-                                  const Icon(Icons.notifications_none, color: Colors.white38, size: 24),
-                                  Positioned(
-                                    right: 2,
-                                    top: 2,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
-                                      constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
-                                    ),
-                                  ),
-                                ],
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.search, color: Colors.white60, size: 26),
+                                onPressed: () => setState(() => _selectedIndex = 1),
                               ),
-                              onPressed: () => setState(() => _selectedIndex = 7),
-                            ),
-                          ],
+                              IconButton(
+                                icon: Stack(
+                                  children: [
+                                    const Icon(Icons.notifications_none, color: Colors.white60, size: 26),
+                                    Positioned(
+                                      right: 2,
+                                      top: 2,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                                        constraints: const BoxConstraints(minWidth: 10, minHeight: 10),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                onPressed: () => setState(() => _selectedIndex = 7),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -316,15 +309,14 @@ class _HomeScreenState extends State<HomeScreen> {
       case 8:
         return AffiliateDashboardScreen(userEmail: _userEmail!);
       default:
-        final recentlyWatched = _history;
         return _isLoading 
           ? const Center(child: CircularProgressIndicator(color: Colors.red))
           : CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
                 _buildHero(),
-                if (recentlyWatched.isNotEmpty)
-                  _buildContentSection('Recently Watched', recentlyWatched),
+                if (_recommendations.isNotEmpty)
+                  _buildContentSection('Recently Played', _recommendations),
                 if (_ads.any((a) => a['placement'] == 'homepage'))
                   _buildAdBanner(_ads.firstWhere((a) => a['placement'] == 'homepage')),
                 _buildContentSection('Trending Now', _trending.skip(1).toList()),
@@ -455,7 +447,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => DetailsScreen(movie: movie, userEmail: _userEmail ?? "contactzerolord@gmail.com"),
+                            builder: (context) => DetailsScreen(movie: movie, userEmail: _userEmail!),
                           ),
                         );
                       },
@@ -468,7 +460,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
                         shape: const RoundedRectangleBorder(),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        context.read<ApiService>().addToWatchlist(_userEmail!, movie);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Added to watchlist'), duration: Duration(seconds: 1))
+                        );
+                      },
                       child: const Text('+ ADD WATCHLIST', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 2)),
                     ),
                   ],
@@ -505,19 +502,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMovieCard(Movie movie) {
-    double? progress;
-    if (movie.playbackPosition != null && movie.duration != null && movie.duration! > 0) {
-      progress = movie.playbackPosition! / movie.duration!;
-    }
-
+    double progress = (movie.progressTime != null && movie.duration != null) ? (movie.progressTime! / movie.duration!) : 0;
+    
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DetailsScreen(movie: movie, userEmail: _userEmail ?? "contactzerolord@gmail.com"),
+            builder: (context) => DetailsScreen(movie: movie, userEmail: _userEmail!),
           ),
-        ).then((_) => _loadData()); // Refresh history when coming back
+        );
       },
       child: Container(
         width: 150,
@@ -527,6 +521,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Expanded(
               child: Stack(
+                fit: StackFit.expand,
                 children: [
                   Container(
                     decoration: BoxDecoration(
@@ -538,7 +533,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                  if (progress != null && progress > 0.01)
+                  if (progress > 0)
                     Positioned(
                       bottom: 0,
                       left: 0,
@@ -546,12 +541,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Container(
                         height: 3,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white10,
                           borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
                         ),
-                        alignment: Alignment.centerLeft,
                         child: FractionallySizedBox(
-                          widthFactor: progress.clamp(0.0, 1.0),
+                          alignment: Alignment.centerLeft,
+                          widthFactor: progress.clamp(0, 1),
                           child: Container(
                             decoration: const BoxDecoration(
                               color: Colors.redAccent,

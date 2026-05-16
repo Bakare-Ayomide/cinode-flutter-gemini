@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'checkout_screen.dart';
 import 'affiliate_dashboard_screen.dart';
-import 'admin_dashboard_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userEmail;
@@ -295,15 +294,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSettingsSection() {
     final isAffiliate = _userData?['is_affiliate'] == true || _userData?['is_affiliate'] == 1;
-    final isAdmin = _userData?['is_admin'] == true || _userData?['is_admin'] == 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('PREFERENCES', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 2, color: Colors.white24)),
         const SizedBox(height: 20),
-        if (isAdmin) _buildSettingItem(Icons.admin_panel_settings_outlined, 'Admin Portal', onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminDashboardScreen()));
-        }),
         if (isAffiliate) _buildSettingItem(Icons.campaign_outlined, 'Affiliate Portal', onTap: () {
           Navigator.push(context, MaterialPageRoute(builder: (context) => AffiliateDashboardScreen(userEmail: widget.userEmail)));
         }),

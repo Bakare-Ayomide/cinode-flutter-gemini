@@ -14,15 +14,11 @@ api.interceptors.response.use(
     if (error.response) {
       message = error.response.data?.error || error.response.data?.message || `Status ${error.response.status}`;
     } else if (error.request) {
-      // The request was made but no response was received
-      const isTimeout = error.code === 'ECONNABORTED' || error.message.includes('timeout');
-      message = isTimeout 
-        ? "Connection Timeout: The server is taking too long to respond. Please try again."
-        : "Server is unreachable. Please check if the backend is running and your connection is stable.";
+      message = "Server is unresponsive. Please check your connection.";
     } else {
       message = error.message;
     }
-    console.error(`[Frontend API Error] ${error.config?.url}:`, message);
+    console.error("Frontend API Error:", message);
     return Promise.reject(new Error(message));
   }
 );
@@ -37,8 +33,7 @@ export const movieApi = {
   getTvTrending: () => api.get('/tv/trending').then(res => res.data),
   discover: (params: any) => api.get('/discover', { params }).then(res => res.data),
   getGenres: () => api.get('/movies/genres').then(res => res.data),
-  getDetails: (type: string, id: number, s?: number, e?: number) => api.get<MovieDetails>(`/movies/details/${type}/${id}`, { params: { s, e } }).then(res => res.data),
-  getTvSeason: (id: number, seasonNumber: number) => api.get(`/tv/${id}/season/${seasonNumber}`).then(res => res.data),
+  getDetails: (type: string, id: number) => api.get<MovieDetails>(`/movies/details/${type}/${id}`).then(res => res.data),
   search: (query: string) => api.get('/search', { params: { q: query } }).then(res => res.data),
   getWatchlist: () => api.get<WatchlistItem[]>('/watchlist').then(res => res.data),
   addToWatchlist: (item: any) => api.post('/watchlist', item),
@@ -77,6 +72,7 @@ export const movieApi = {
   extractInfo: (imageUrl: string) => api.post('/checkout/extract-info', { image_url: imageUrl }).then(res => res.data),
   // Affiliates
   getAffiliateDashboard: () => api.get('/affiliate/dashboard').then(res => res.data),
+  requestPayout: () => api.post('/affiliate/payout-request').then(res => res.data),
   // Ads
   getActiveAds: () => api.get('/ads/active').then(res => res.data),
   trackAd: (id: number, action: 'impression' | 'click') => api.post(`/ads/track/${id}/${action}`),
@@ -103,8 +99,8 @@ export const movieApi = {
   grantPremium: (email: string, duration: string) => api.post('/admin/users/grant-premium', { email, duration }),
   revokePremium: (email: string) => api.post('/admin/users/revoke-premium', { email }),
   updateUserSettings: (settings: any) => api.post('/user/settings', { settings }),
-  // Jellyfin
-  getAdminJellyfinServers: () => api.get('/admin/jellyfin/servers').then(res => res.data),
-  saveAdminJellyfinServer: (server: any) => api.post('/admin/jellyfin/servers', server),
-  deleteAdminJellyfinServer: (id: number) => api.delete(`/admin/jellyfin/servers/${id}`),
+  restoreFromJson: () => api.post('/admin/restore-from-json').then(res => res.data),
+  // Playback Progress
+  getPlaybackProgress: (type: string, id: number) => api.get(`/playback/progress/${type}/${id}`).then(res => res.data),
+  savePlaybackProgress: (data: { movie_id: number | string, media_type: string, title?: string, poster_path?: string, progress_time: number, duration: number }) => api.post('/playback/progress', data).then(res => res.data),
 };

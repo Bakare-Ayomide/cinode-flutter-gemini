@@ -41,9 +41,8 @@ const AdminDashboard: React.FC = () => {
   const [earnings, setEarnings] = useState<any[]>([]);
   const [ads, setAds] = useState<Ad[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [jellyfinServers, setJellyfinServers] = useState<any[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'content' | 'settings' | 'payments' | 'payconfig' | 'affiliates' | 'ads' | 'notifications' | 'jellyfin'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'content' | 'settings' | 'payments' | 'payconfig' | 'affiliates' | 'ads' | 'notifications'>('stats');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
@@ -72,9 +71,6 @@ const AdminDashboard: React.FC = () => {
   const [newAffiliate, setNewAffiliate] = useState({ email: '', referral_code: '' });
   const [newPayConfig, setNewPayConfig] = useState<any>({
     bank_name: '', account_name: '', account_number: '', crypto_address: '', other_method: '', payment_note: '', tracking_questions: '[]'
-  });
-  const [newJellyfinServer, setNewJellyfinServer] = useState<any>({
-    id: null, name: '', url: '', api_key: '', priority: 0, is_active: true
   });
 
   const GRANT_DURATIONS = [
@@ -124,9 +120,6 @@ const AdminDashboard: React.FC = () => {
       } else if (activeTab === 'notifications') {
         const data = await movieApi.getAdminNotifications();
         setNotifications(data);
-      } else if (activeTab === 'jellyfin') {
-        const data = await movieApi.getAdminJellyfinServers();
-        setJellyfinServers(data);
       }
     } catch (err: any) {
       showMsg('error', err.response?.data?.error || 'Fetch failed');
@@ -289,10 +282,10 @@ const AdminDashboard: React.FC = () => {
 
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
         {/* Sidebar / Mobile Nav */}
-        <div className="flex md:flex-col items-center md:items-stretch overflow-x-auto md:overflow-y-auto border-b md:border-b-0 md:border-r border-white/5 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1 no-scrollbar bg-[#0D0D0E]/50 md:bg-transparent md:w-64 h-full scroll-smooth">
+        <div className="flex md:flex-col items-center md:items-stretch overflow-x-auto md:overflow-x-visible border-b md:border-b-0 md:border-r border-white/5 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1 no-scrollbar bg-gray-50/50 bg-[#0D0D0E]/50 md:bg-transparent md:w-64">
           <button 
             onClick={() => setActiveTab('stats')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'stats' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'stats' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Database size={18} /> <span className="hidden md:inline">Overview</span>
           </button>
@@ -300,19 +293,19 @@ const AdminDashboard: React.FC = () => {
           <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-white/20 mt-4 mb-1 ml-4">Core</div>
           <button 
             onClick={() => setActiveTab('users')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'users' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'users' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Users size={18} /> <span className="hidden md:inline">Users</span>
           </button>
           <button 
             onClick={() => setActiveTab('content')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'content' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'content' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Film size={18} /> <span className="hidden md:inline">Vault</span>
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'settings' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'settings' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Settings size={18} /> <span className="hidden md:inline">Config</span>
           </button>
@@ -320,20 +313,20 @@ const AdminDashboard: React.FC = () => {
           <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-white/20 mt-4 mb-1 ml-4">Growth</div>
           <button 
             onClick={() => setActiveTab('payments')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'payments' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'payments' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <CreditCard size={18} /> <span className="hidden md:inline">Payments</span>
             {stats?.pending_payments > 0 && <span className="ml-auto bg-red-500 text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-black text-white">{stats.pending_payments}</span>}
           </button>
           <button 
             onClick={() => setActiveTab('payconfig')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'payconfig' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'payconfig' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <DollarSign size={18} /> <span className="hidden md:inline">Checkout Config</span>
           </button>
           <button 
             onClick={() => setActiveTab('affiliates')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'affiliates' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'affiliates' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <ArrowUpRight size={18} /> <span className="hidden md:inline">Affiliates</span>
           </button>
@@ -341,23 +334,16 @@ const AdminDashboard: React.FC = () => {
           <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-white/20 mt-4 mb-1 ml-4">Audience</div>
           <button 
             onClick={() => setActiveTab('ads')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'ads' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'ads' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Megaphone size={18} /> <span className="hidden md:inline">Ad Manager</span>
           </button>
           <button 
             onClick={() => setActiveTab('notifications')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'notifications' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'notifications' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
           >
             <Bell size={18} /> <span className="hidden md:inline">Notifications</span>
           </button>
-          <button 
-            onClick={() => setActiveTab('jellyfin')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'jellyfin' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
-          >
-            <RefreshCw size={18} /> <span className="hidden md:inline">Jellyfin Servers</span>
-          </button>
-          <div className="h-20 hidden md:block" /> {/* Bottom padding for scrollability */}
         </div>
 
         {/* Main Content Area */}
@@ -369,26 +355,71 @@ const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'stats' && stats && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
-                <Users className="text-red-500" size={28} />
-                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Total Users</h3>
-                <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.users}</p>
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
+                  <Users className="text-red-500" size={28} />
+                  <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Total Users</h3>
+                  <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.users}</p>
+                </div>
+                <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
+                  <ShieldCheck className="text-blue-500" size={28} />
+                  <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Active Overrides</h3>
+                  <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.overrides}</p>
+                </div>
+                <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
+                  <CreditCard className="text-yellow-500" size={28} />
+                  <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Pending Payments</h3>
+                  <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.pending_payments}</p>
+                </div>
+                <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
+                  <RefreshCw className="text-green-500" size={28} />
+                  <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">User Reviews</h3>
+                  <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.reviews}</p>
+                </div>
               </div>
-              <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
-                <ShieldCheck className="text-blue-500" size={28} />
-                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Active Overrides</h3>
-                <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.overrides}</p>
-              </div>
-              <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
-                <CreditCard className="text-yellow-500" size={28} />
-                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Pending Payments</h3>
-                <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.pending_payments}</p>
-              </div>
-              <div className="p-6 md:p-8 bg-[#0D0D0E] border border-white/5 rounded-2xl space-y-4 shadow-sm">
-                <RefreshCw className="text-green-500" size={28} />
-                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest">User Reviews</h3>
-                <p className="text-4xl md:text-5xl font-serif italic text-white">{stats.reviews}</p>
+
+              {/* Maintenance Tools */}
+              <div className="bg-[#0D0D0E] p-8 border border-white/5 rounded-3xl space-y-6">
+                 <div>
+                    <h3 className="text-lg font-serif italic text-white">Maintenance & Recovery</h3>
+                    <p className="text-xs text-white/40">Critical operations to maintain system integrity and restore data.</p>
+                 </div>
+                 <div className="flex flex-wrap gap-4">
+                    <button 
+                      onClick={async () => {
+                        if (!confirm("Are you sure you want to restore data from database.json? This might overwrite some existing settings.")) return;
+                        setLoading(true);
+                        try {
+                          const res = await movieApi.restoreFromJson();
+                          showMsg('success', res.message);
+                          fetchData();
+                        } catch (err: any) {
+                          showMsg('error', err.message);
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      className="px-6 py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center gap-3 hover:bg-white/10 transition-all group"
+                    >
+                      <Database className="text-blue-500 group-hover:scale-110 transition-transform" size={20} />
+                      <div className="text-left">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white">Restore from JSON</p>
+                        <p className="text-[9px] text-white/40">Import local database.json into SQL</p>
+                      </div>
+                    </button>
+                    
+                    <button 
+                      onClick={() => fetchData()}
+                      className="px-6 py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center gap-3 hover:bg-white/10 transition-all group"
+                    >
+                      <RefreshCw className="text-green-500 group-hover:rotate-180 transition-transform duration-500" size={20} />
+                      <div className="text-left">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white">Sync Status</p>
+                        <p className="text-[9px] text-white/40">Refresh all dashboard statistics</p>
+                      </div>
+                    </button>
+                 </div>
               </div>
             </div>
           )}
@@ -1030,136 +1061,6 @@ const AdminDashboard: React.FC = () => {
                                 >
                                     <Trash2 size={20} />
                                 </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-          )}
-
-          {activeTab === 'jellyfin' && (
-            <div className="space-y-8">
-                <div className="bg-[#0D0D0E] p-8 border border-white/5 rounded-3xl space-y-6 shadow-sm">
-                    <h2 className="text-xl font-serif italic text-white">{newJellyfinServer.id ? 'Edit Server' : 'Add Jellyfin Server'}</h2>
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Friendly Name</label>
-                            <input 
-                                type="text" placeholder="Main Server"
-                                value={newJellyfinServer.name}
-                                onChange={e => setNewJellyfinServer({...newJellyfinServer, name: e.target.value})}
-                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Server URL</label>
-                            <input 
-                                type="url" placeholder="http://1.2.3.4:8096"
-                                value={newJellyfinServer.url}
-                                onChange={e => setNewJellyfinServer({...newJellyfinServer, url: e.target.value})}
-                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">API Key</label>
-                            <input 
-                                type="password" placeholder="Jellyfin API Key"
-                                value={newJellyfinServer.api_key}
-                                onChange={e => setNewJellyfinServer({...newJellyfinServer, api_key: e.target.value})}
-                                className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-white/20 font-black uppercase tracking-widest ml-2">Priority</label>
-                                <input 
-                                    type="number" value={newJellyfinServer.priority}
-                                    onChange={e => setNewJellyfinServer({...newJellyfinServer, priority: Number(e.target.value)})}
-                                    className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
-                                />
-                            </div>
-                            <div className="flex items-end pb-1">
-                                <button 
-                                    onClick={() => setNewJellyfinServer({...newJellyfinServer, is_active: !newJellyfinServer.is_active})}
-                                    className={`w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                                        newJellyfinServer.is_active ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-red-500/10 border-red-500 text-red-500'
-                                    }`}
-                                >
-                                    {newJellyfinServer.is_active ? 'Active' : 'Disabled'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex gap-2">
-                        <button 
-                            onClick={async () => {
-                                try {
-                                    await movieApi.saveAdminJellyfinServer(newJellyfinServer);
-                                    showMsg('success', 'Server saved');
-                                    setNewJellyfinServer({ id: null, name: '', url: '', api_key: '', priority: 0, is_active: true });
-                                    fetchData();
-                                } catch (err) { showMsg('error', 'Save failed'); }
-                            }}
-                            className="bg-white text-black px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-red-600 hover:text-white transition-all shadow-2xl"
-                        >
-                            Save Jellyfin Server
-                        </button>
-                        {newJellyfinServer.id && (
-                            <button 
-                                onClick={() => setNewJellyfinServer({ id: null, name: '', url: '', api_key: '', priority: 0, is_active: true })}
-                                className="bg-white/5 border border-white/10 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs text-white/40"
-                            >
-                                Cancel
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <h2 className="text-xl md:text-2xl font-serif italic text-white">Configured Servers</h2>
-                    <div className="grid grid-cols-1 gap-4">
-                        {jellyfinServers.map(item => (
-                            <div key={item.id} className="bg-[#0D0D0E] border border-white/5 rounded-2xl p-6 flex items-center justify-between shadow-sm">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-white/40">
-                                        <Database size={24} />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="font-bold text-white">{item.name}</h4>
-                                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${item.is_active ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
-                                                {item.is_active ? 'Active' : 'Disabled'}
-                                            </span>
-                                            <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">Prio: {item.priority}</span>
-                                        </div>
-                                        <p className="text-xs text-white/40 font-mono">{item.url}</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => {
-                                            setNewJellyfinServer(item);
-                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                        }}
-                                        className="p-2 hover:bg-white/10 text-white/40 hover:text-white rounded-lg transition-all"
-                                    >
-                                        <Settings size={18} />
-                                    </button>
-                                    <button 
-                                        onClick={async () => {
-                                            if (confirm('Delete this server?')) {
-                                                try {
-                                                    await movieApi.deleteAdminJellyfinServer(item.id);
-                                                    showMsg('success', 'Server deleted');
-                                                    fetchData();
-                                                } catch (err) { showMsg('error', 'Delete failed'); }
-                                            }
-                                        }}
-                                        className="p-2 hover:bg-red-600/20 text-white/40 hover:text-red-500 rounded-lg transition-all"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
                             </div>
                         ))}
                     </div>

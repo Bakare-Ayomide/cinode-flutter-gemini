@@ -2,5 +2,7 @@
   "name": "Cinode - Ultimate Movie & TV Experience",
   "description": "A premium-grade cinematic experience with offline downloads, advanced admin overrides, and an high-performance customizable video player.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

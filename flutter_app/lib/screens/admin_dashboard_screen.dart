@@ -18,9 +18,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<dynamic> _ads = [];
   List<dynamic> _notifications = [];
   List<dynamic> _users = [];
-  List<dynamic> _jellyfinServers = [];
-  List<dynamic> _settings = [];
-  Map<String, dynamic> _payConfig = {};
   bool _isLoading = true;
   String _activeTab = 'stats';
 
@@ -33,7 +30,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
     final api = ApiService();
-    const user = "contactzerolord@gmail.com";
+    final user = "contactzerolord@gmail.com";
     
     try {
       final results = await Future.wait([
@@ -43,10 +40,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         api.getAdminAds(user),
         api.getAdminNotifications(user),
         api.getAdminUsers(user),
-        api.getAdminJellyfinServers(user),
-        api.getAdminSettings(user),
-        api.getAdminPaymentConfig(user),
-        api.getAdminStats(user),
       ]);
 
       if (mounted) {
@@ -57,10 +50,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _ads = results[3];
           _notifications = results[4];
           _users = results[5];
-          _jellyfinServers = results[6];
-          _settings = results[7];
-          _payConfig = results[8] as Map<String, dynamic>;
-          _stats = results[9] as Map<String, dynamic>;
+          _stats = {
+            'users': _users.length,
+            'payments': _payments.where((p) => p['status'] == 'pending').length,
+            'affiliates': _affiliates.length,
+            'overrides': _overrides.length,
+          };
           _isLoading = false;
         });
       }
@@ -71,33 +66,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(backgroundColor: Color(0xFF0A0A0B), body: Center(child: CircularProgressIndicator(color: Colors.red)));
+    if (_isLoading) return const Center(child: CircularProgressIndicator(color: Colors.red));
 
-    final isWide = MediaQuery.of(context).size.width > 900;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0B),
-      body: Padding(
-        padding: EdgeInsets.all(isWide ? 40.0 : 20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!isWide) const SizedBox(height: 20),
-            Text(
-              'CONTROL CENTER',
-              style: GoogleFonts.manrope(
-                fontSize: isWide ? 64 : 32,
-                fontWeight: FontWeight.w300,
-                color: Colors.white,
-                letterSpacing: -1,
-              ),
+    return Padding(
+      padding: const EdgeInsets.all(40.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'CONTROL CENTER',
+            style: GoogleFonts.manrope(
+              fontSize: 64,
+              
+              fontWeight: FontWeight.w300,
+              color: Colors.white,
             ),
-            const SizedBox(height: 20),
-            _buildTabSwitcher(),
-            const SizedBox(height: 20),
-            Expanded(child: _buildActiveContent()),
-          ],
-        ),
+          ),
+          const SizedBox(height: 40),
+          _buildTabSwitcher(),
+          const SizedBox(height: 40),
+          Expanded(child: _buildActiveContent()),
+        ],
       ),
     );
   }
@@ -109,14 +98,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         children: [
           _buildTabButton('DASHBOARD', 'stats'),
           _buildTabButton('USERS', 'users'),
-          _buildTabButton('VAULT', 'overrides'),
-          _buildTabButton('CONFIG', 'settings'),
           _buildTabButton('PAYMENTS', 'payments'),
-          _buildTabButton('CHECKOUT', 'payconfig'),
-          _buildTabButton('PARTNERS', 'affiliates'),
+          _buildTabButton('AFFILIATES', 'affiliates'),
           _buildTabButton('ADS', 'ads'),
-          _buildTabButton('NOTIFS', 'notifications'),
-          _buildTabButton('SERVERS', 'jellyfin'),
+          _buildTabButton('NOTIFICATIONS', 'notifications'),
+          _buildTabButton('OVERRIDES', 'overrides'),
         ],
       ),
     );
@@ -143,173 +129,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     switch (_activeTab) {
       case 'users': return _buildUsersList();
       case 'payments': return _buildPaymentsList();
-      case 'payconfig': return _buildPayConfig();
       case 'affiliates': return _buildAffiliatesList();
       case 'ads': return _buildAdsList();
       case 'notifications': return _buildNotificationsList();
       case 'overrides': return _buildOverridesList();
-      case 'settings': return _buildSettingsList();
-      case 'jellyfin': return _buildJellyfinList();
       default: return _buildStatsDashboard();
     }
-  }
-
-  Widget _buildSettingsList() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('REGISTRY', style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 2)),
-            ElevatedButton(onPressed: _showSettingsForm, child: const Text('NEW ENTRY', style: TextStyle(fontSize: 10))),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Expanded(
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 2.5,
-              crossAxisSpacing: 20,
-              mainAxisSpacing: 20,
-            ),
-            itemCount: _settings.length,
-            itemBuilder: (context, index) {
-              final s = _settings[index];
-              return Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.02),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(s['setting_key'], style: const TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
-                    const SizedBox(height: 5),
-                    Text(s['setting_value'].toString(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60, fontSize: 12)),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showSettingsForm() {
-    final keyController = TextEditingController();
-    final valController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF151517),
-        title: const Text('NEW CONFIG ENTRY'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: keyController, decoration: const InputDecoration(labelText: 'KEY')),
-            TextField(controller: valController, decoration: const InputDecoration(labelText: 'VALUE'), maxLines: 3),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
-          TextButton(onPressed: () async {
-            await ApiService().saveAdminSetting("contactzerolord@gmail.com", keyController.text, valController.text);
-            Navigator.pop(context);
-            _fetchData();
-          }, child: const Text('SAVE')),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPayConfig() {
-    final controllers = {
-      'bank_name': TextEditingController(text: _payConfig['bank_name']),
-      'account_name': TextEditingController(text: _payConfig['account_name']),
-      'account_number': TextEditingController(text: _payConfig['account_number']),
-      'crypto_address': TextEditingController(text: _payConfig['crypto_address']),
-      'other_method': TextEditingController(text: _payConfig['other_method']),
-      'payment_note': TextEditingController(text: _payConfig['payment_note']),
-    };
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('PAYMENT INFRASTRUCTURE', style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 2)),
-              ElevatedButton(
-                onPressed: () async {
-                  final data = controllers.map((k, v) => MapEntry(k, v.text));
-                  await ApiService().saveAdminPaymentConfig("contactzerolord@gmail.com", data);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Config updated')));
-                  _fetchData();
-                },
-                child: const Text('SAVE CHANGES', style: TextStyle(fontSize: 10)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 30),
-          _buildConfigCard('BANK TRANSFER', [
-            _buildConfigField('BANK NAME', controllers['bank_name']!),
-            _buildConfigField('ACCOUNT NAME', controllers['account_name']!),
-            _buildConfigField('ACCOUNT NUMBER', controllers['account_number']!),
-          ]),
-          const SizedBox(height: 20),
-          _buildConfigCard('ALTERNATIVE METHODS', [
-            _buildConfigField('CRYPTO ADDRESS', controllers['crypto_address']!),
-            _buildConfigField('OTHER / MOBILE MONEY', controllers['other_method']!, maxLines: 3),
-          ]),
-          const SizedBox(height: 20),
-          _buildConfigCard('USER BANNER', [
-            _buildConfigField('CHECKOUT NOTE', controllers['payment_note']!, maxLines: 3),
-          ]),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConfigCard(String title, List<Widget> children) {
-    return Container(
-      padding: const EdgeInsets.all(30),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 2)),
-          const SizedBox(height: 20),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConfigField(String label, TextEditingController controller, {int maxLines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.white24, fontSize: 10),
-          enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
-          focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.redAccent)),
-        ),
-      ),
-    );
   }
 
   Widget _buildUsersList() {
@@ -594,163 +419,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildOverrideItem(Map<String, dynamic> ov) {
-    return ListTile(
-      title: Text(ov['title'] ?? 'TMDB ID: ${ov['tmdb_id']}', style: const TextStyle(color: Colors.white)),
-      subtitle: Text("${ov['media_type'].toString().toUpperCase()} - ${ov['video_url']}", style: const TextStyle(color: Colors.white24, fontSize: 10)),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(icon: const Icon(Icons.copy, size: 16, color: Colors.blue), onPressed: () => _duplicateOverride(ov)),
-          IconButton(icon: const Icon(Icons.edit, size: 16, color: Colors.white38), onPressed: () => _editOverride(ov)),
-          IconButton(icon: const Icon(Icons.delete, size: 16, color: Colors.redAccent), onPressed: () => _handleDeleteOverride(ov['id'])),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _handleDeleteOverride(int id) async {
-    await ApiService().adminDeleteOverride("contactzerolord@gmail.com", id);
-    _fetchData();
-  }
-
-  Widget _buildJellyfinList() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('JELLYFIN INFRASTRUCTURE', style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 2)),
-            ElevatedButton(onPressed: _showJellyfinForm, child: const Text('ADD SERVER', style: TextStyle(fontSize: 10))),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Expanded(
-          child: ListView.builder(
-            itemCount: _jellyfinServers.length,
-            itemBuilder: (context, index) {
-              final s = _jellyfinServers[index];
-              return ListTile(
-                title: Text(s['name'], style: const TextStyle(color: Colors.white)),
-                subtitle: Text(s['url'], style: const TextStyle(color: Colors.white24, fontSize: 10)),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Switch(value: s['is_active'] == 1, onChanged: (v) async {
-                      s['is_active'] = v ? 1 : 0;
-                      await ApiService().saveAdminJellyfinServer("contactzerolord@gmail.com", s);
-                      _fetchData();
-                    }),
-                    IconButton(
-                      icon: const Icon(Icons.delete, size: 16, color: Colors.red),
-                      onPressed: () async {
-                        await ApiService().deleteAdminJellyfinServer("contactzerolord@gmail.com", s['id']);
-                        _fetchData();
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showJellyfinForm() {
-    final nameController = TextEditingController();
-    final urlController = TextEditingController();
-    final keyController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF151517),
-        title: const Text('ADD JELLYFIN SERVER'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'NAME')),
-            TextField(controller: urlController, decoration: const InputDecoration(labelText: 'URL (with http/https)')),
-            TextField(controller: keyController, decoration: const InputDecoration(labelText: 'API KEY')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
-          TextButton(
-            onPressed: () async {
-              await ApiService().saveAdminJellyfinServer("contactzerolord@gmail.com", {
-                'name': nameController.text,
-                'url': urlController.text,
-                'api_key': keyController.text,
-                'is_active': 1,
-              });
-              Navigator.pop(context);
-              _fetchData();
-            },
-            child: const Text('SAVE'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String label, String value, {Color color = Colors.redAccent}) {
-    return Container(
-      width: 200,
-      padding: const EdgeInsets.all(25),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 2)),
-          const SizedBox(height: 15),
-          Text(value, style: GoogleFonts.manrope(fontSize: 32, fontWeight: FontWeight.bold, color: color)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsPanel() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(30),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.01),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('SYSTEM CONFIGURATION', style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.black, color: Colors.white38, letterSpacing: 2)),
-          const SizedBox(height: 30),
-          _buildToggleSetting('MAINTENANCE MODE', false),
-          _buildToggleSetting('ALLOW NEW REGISTRATIONS', true),
-          _buildToggleSetting('ENFORCE PREMIUM FOR HLS', true),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleSetting(String label, bool value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-          Switch(value: value, onChanged: (v) {}, activeColor: Colors.redAccent),
-        ],
-      ),
     );
   }
 
