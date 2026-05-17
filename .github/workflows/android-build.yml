@@ -1,4 +1,4 @@
-name: Build Cinode Android APK
+name: Build Cinode APK
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -35,20 +35,29 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Make Gradlew executable
+      - name: Make Gradle executable
         run: chmod +x android/gradlew
 
-      - name: Build RELEASE APK
+      - name: Build Release APK
         run: |
           cd android
           ./gradlew assembleRelease
 
-      - name: Rename APK
+      - name: Find generated APK
         run: |
-          mkdir -p release
-          cp android/app/build/outputs/apk/release/app-release.apk release/Cinode.apk
+          echo "Searching APK..."
+          find android -type f -name "*.apk"
 
-      - name: Upload APK
+      - name: Create release folder
+        run: mkdir -p release
+
+      - name: Copy APK (auto-detect, no path errors)
+        run: |
+          APK_PATH=$(find android -type f -name "*release*.apk" | head -n 1)
+          echo "Found APK at: $APK_PATH"
+          cp "$APK_PATH" release/Cinode.apk
+
+      - name: Upload Cinode APK
         uses: actions/upload-artifact@v4
         with:
           name: Cinode
