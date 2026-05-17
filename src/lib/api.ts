@@ -3,15 +3,32 @@ import { Movie, MovieDetails, Review, WatchlistItem } from '../types';
 
 const getBaseUrl = () => {
   const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
-  if (envUrl) return envUrl;
   
-  // If we are likely hosted on Vercel and have no env var set,
-  // default to the AI Studio backend URL.
-  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
-    return 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
+  if (typeof window === 'undefined') return envUrl;
+
+  const hostname = window.location.hostname;
+  const isVercel = hostname.includes('vercel.app');
+  const isAIStudio = hostname.includes('run.app') || hostname.includes('google.com');
+
+  // 1. If on Vercel, prioritize envUrl, or fallback to AI Studio if no env provided
+  if (isVercel) {
+    return envUrl || 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
   }
-  
-  return ''; // Default to relative path (works for AI Studio preview)
+
+  // 2. If on AI Studio, relative path is always safest for the same-origin backend
+  if (isAIStudio) {
+    return '';
+  }
+
+  // 3. For VPS / IP / Custom Domain: 
+  // If the baked-in URL is pointing to AI Studio, we should IGNORE it and use relative path.
+  // This is the most common issue when users "download" or "deploy" the app.
+  if (envUrl && envUrl.includes('run.app')) {
+    return '';
+  }
+
+  // Otherwise use the envUrl (if it's a custom backend) or relative path
+  return envUrl; 
 };
 
 const api = axios.create({
@@ -27,7 +44,7 @@ api.interceptors.response.use(
     if (error.response) {
       message = error.response.data?.error || error.response.data?.message || `Status ${error.response.status}`;
     } else if (error.request) {
-      message = "Server is unresponsive. Please check your connection.";
+      message = `Server is unresponsive (${api.defaults.baseURL}). Please check your connection.`;
     } else {
       message = error.message;
     }
@@ -53,7 +70,7 @@ export const movieApi = {
   removeFromWatchlist: (id: number) => api.delete(`/watchlist/${id}`),
   getReviews: (type: string, id: number) => api.get<Review[]>(`/reviews/${type}/${id}`).then(res => res.data),
   postReview: (review: any) => api.post('/reviews', review),
-  getRecommendations: () => api.get<Movie[]>('/recommendations').then(res => res.data),
+  getRecommendations: () => api.get<string[]>('/recommendations').then(res => res.data),
   getHistory: () => api.get<any[]>('/user/history').then(res => res.data),
   addToHistory: (item: any) => api.post('/history', item),
   login: (email: string) => api.post('/user/login', { email }),

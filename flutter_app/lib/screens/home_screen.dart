@@ -150,35 +150,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Column(
                   children: [
-                    const SizedBox(height: 40),
-                    GestureDetector(
-                      onTap: () => setState(() => _selectedIndex = 0),
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        margin: const EdgeInsets.symmetric(vertical: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.red[600],
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red[600]!.withOpacity(0.3),
-                              blurRadius: 20,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'C', 
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 60),
                     _buildNavIcon(Icons.home_outlined, 0),
                     _buildNavIcon(Icons.search, 1),
@@ -336,21 +307,6 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          if (active)
-            Container(
-              width: 45,
-              height: 45,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red[600]!.withOpacity(0.15),
-                    blurRadius: 15,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-            ),
           IconButton(
             icon: Icon(
               icon, 
@@ -588,16 +544,6 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.red[600],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: const Text('C', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-            ),
             const SizedBox(height: 40),
             Text(
               'CINODE',

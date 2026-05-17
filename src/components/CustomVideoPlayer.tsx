@@ -370,14 +370,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             className="absolute inset-0 z-30 bg-gradient-to-t from-black/90 via-transparent to-black/60 flex flex-col justify-between"
           >
             {/* Top Bar */}
-            <div className="p-4 md:p-10 flex justify-between items-start">
-              <div className="space-y-1 max-w-[70%]">
-                <h2 className="text-lg md:text-3xl font-serif italic font-light tracking-tighter text-white/90 truncate">{title || 'Cinode Feature'}</h2>
-                <div className="flex items-center gap-2 md:gap-3">
-                    <span className="px-1 py-0.5 md:px-1.5 md:py-0.5 bg-red-600 text-white text-[6px] md:text-[8px] font-bold uppercase rounded">4K HDR</span>
-                    <span className="text-[8px] md:text-[10px] text-white/40 uppercase tracking-widest truncate">Cinode Master Stream</span>
-                </div>
-              </div>
+            <div className="p-4 md:p-10 flex justify-end items-start">
               <button 
                 onClick={onClose}
                 className="p-2 md:p-3 bg-white/5 hover:bg-red-600 rounded-full transition-all active:scale-90"

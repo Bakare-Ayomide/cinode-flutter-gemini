@@ -25,7 +25,8 @@ interface AffiliateDashboardProps {
 export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'referrals' | 'earnings'>('overview');
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [payoutAmount, setPayoutAmount] = useState('');
@@ -48,17 +49,17 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
   const handleCopyCode = () => {
     if (data?.affiliate?.referral_code) {
       navigator.clipboard.writeText(data.affiliate.referral_code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
     }
   };
 
   const handleCopyLink = () => {
     if (data?.affiliate?.referral_code) {
-      const link = `${window.location.origin}?ref=${data.affiliate.referral_code}`;
+      const link = `${window.location.host === 'localhost:3000' || window.location.host.includes('ai.studio') ? window.location.origin : 'https://' + window.location.host}?ref=${data.affiliate.referral_code}`;
       navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
     }
   };
 
@@ -108,43 +109,43 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#0A0A0B] pb-24">
-      <div className="w-full max-w-6xl mx-auto px-6 py-12">
+      <div className="w-full max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-12">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-          <div>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 md:mb-10">
+          <div className="w-full">
             <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 bg-red-600 text-[9px] font-black uppercase tracking-[0.2em] rounded text-white">Partner</span>
-                <p className="text-xs text-white/20 font-bold uppercase tracking-widest">Affiliate Dashboard</p>
+                <span className="px-2 py-0.5 bg-red-600 text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] rounded text-white italic">Partner</span>
+                <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest">Affiliate Node</p>
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-white">Welcome, {affiliate.user_email.split('@')[0]}</h1>
+            <h1 className="text-xl md:text-3xl font-black tracking-tight text-white truncate max-w-[280px] md:max-w-none px-1">
+              {affiliate.user_email.split('@')[0].toUpperCase()}
+            </h1>
           </div>
 
-          <div className="flex flex-wrap gap-4">
-            <div className="bg-[#161618] px-6 py-4 rounded-3xl border border-white/5 flex items-center gap-6 shadow-2xl">
-                <div>
-                <p className="text-[10px] text-white/30 font-black uppercase tracking-widest mb-1">Referral Link</p>
-                <p className="text-xs font-mono text-white/40 truncate max-w-[200px]">{window.location.origin}?ref={affiliate.referral_code}</p>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            <div className="bg-[#121214] px-4 py-2.5 rounded-2xl border border-white/5 flex items-center justify-between gap-3 w-full sm:w-[220px] shadow-xl">
+                <div className="min-w-0">
+                  <p className="text-[8px] text-white/20 font-black uppercase tracking-widest leading-none mb-1">Affiliate Link</p>
+                  <p className="text-[10px] font-mono text-white/40 truncate">{window.location.origin}?ref={affiliate.referral_code}</p>
                 </div>
                 <button 
-                onClick={handleCopyLink}
-                className={`p-3 rounded-2xl transition-all ${copied ? 'bg-green-500 text-white' : 'bg-white/5 hover:bg-white/10 text-white/40'}`}
-                title="Copy Link"
+                  onClick={handleCopyLink}
+                  className={`p-2 rounded-xl transition-all shrink-0 ${copiedLink ? 'bg-green-500 text-white' : 'bg-white/5 hover:bg-white/10 text-white/40'}`}
                 >
-                {copied ? <CheckCircle size={20} /> : <ExternalLink size={20} />}
+                  {copiedLink ? <CheckCircle size={14} /> : <ExternalLink size={14} />}
                 </button>
             </div>
 
-            <div className="bg-[#161618] px-6 py-4 rounded-3xl border border-white/5 flex items-center gap-6 shadow-2xl">
-                <div>
-                <p className="text-[10px] text-white/30 font-black uppercase tracking-widest mb-1">Your Code</p>
-                <p className="text-xl font-black tracking-[0.2em] text-red-500">{affiliate.referral_code}</p>
+            <div className="bg-[#121214] px-4 py-2.5 rounded-2xl border border-white/5 flex items-center justify-between gap-3 w-full sm:w-[150px] shadow-xl">
+                <div className="min-w-0">
+                  <p className="text-[8px] text-white/20 font-black uppercase tracking-widest leading-none mb-1">Ref Code</p>
+                  <p className="text-sm font-black tracking-[0.1em] text-red-500 leading-none">{affiliate.referral_code}</p>
                 </div>
                 <button 
-                onClick={handleCopyCode}
-                className={`p-3 rounded-2xl transition-all ${copied ? 'bg-green-500 text-white' : 'bg-white/5 hover:bg-white/10 text-white/40'}`}
-                title="Copy Code"
+                  onClick={handleCopyCode}
+                  className={`p-2 rounded-xl transition-all shrink-0 ${copiedCode ? 'bg-green-500 text-white' : 'bg-white/5 hover:bg-white/10 text-white/40'}`}
                 >
-                {copied ? <CheckCircle size={20} /> : <Copy size={20} />}
+                  {copiedCode ? <CheckCircle size={14} /> : <Copy size={14} />}
                 </button>
             </div>
           </div>
@@ -173,37 +174,35 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
               Request Payout
             </button>
           </motion.div>
-        )}
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+        )}        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8 md:mb-12">
           {[
-            { label: 'Referrals', value: stats.total_referrals, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+            { label: 'Total Referrals', value: stats.total_referrals, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
             { label: 'Paid Users', value: stats.paid_referrals, icon: ArrowUpRight, color: 'text-green-500', bg: 'bg-green-500/10' },
-            { label: 'Earnings', value: `₦${stats.total_earnings.toLocaleString()}`, icon: DollarSign, color: 'text-red-500', bg: 'bg-red-500/10' },
-            { label: 'Pending', value: `₦${stats.pending_earnings.toLocaleString()}`, icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-            { label: 'Requested', value: `₦${stats.requested_earnings.toLocaleString()}`, icon: Send, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+            { label: 'Total Earnings', value: `₦${stats.total_earnings.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+            { label: 'Owed Earnings', value: `₦${stats.pending_earnings.toLocaleString()}`, icon: Clock, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+            { label: 'Payout Requests', value: `₦${stats.requested_earnings.toLocaleString()}`, icon: Send, color: 'text-blue-400', bg: 'bg-blue-400/10' },
           ].map((stat, idx) => (
             <motion.div 
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className="bg-[#161618] p-6 rounded-3xl border border-white/5"
+              className="bg-[#161618] p-6 rounded-3xl border border-white/5 shadow-xl flex flex-col justify-center"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className={`p-2 ${stat.bg} rounded-xl`}>
-                    <stat.icon className={stat.color} size={20} />
+                    <stat.icon className={stat.color} size={18} />
                 </div>
               </div>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black mb-1">{stat.label}</p>
-              <p className="text-2xl font-black text-white">{stat.value}</p>
+              <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mb-1 truncate">{stat.label}</p>
+              <p className="text-2xl font-black text-white tracking-tight">{stat.value}</p>
             </motion.div>
           ))}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 p-1.5 bg-gray-100 bg-[#161618] rounded-2xl w-fit mb-8 border border-gray-200 border-white/5">
+        <div className="flex overflow-x-auto no-scrollbar gap-2 p-1.5 bg-[#161618] rounded-2xl w-fit mb-8 border border-white/5 max-w-full">
             {[
                 { id: 'overview', label: 'Overview', icon: TrendingUp },
                 { id: 'referrals', label: 'Referrals', icon: Users },
@@ -212,8 +211,8 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                 <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        activeTab === tab.id ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-900 hover:text-white'
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                        activeTab === tab.id ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:text-white'
                     }`}
                 >
                     <tab.icon size={16} />
@@ -229,37 +228,37 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                    initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
                    className="space-y-8"
                 >
-                    <div className="bg-gray-50 bg-[#161618] rounded-3xl border border-gray-200 border-white/5 p-8">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="font-bold text-lg text-white">Partner Program Strategy</h3>
-                            <span className="text-xs text-red-500 font-bold uppercase tracking-widest">Earning Rules</span>
+                    <div className="bg-[#161618] rounded-2xl md:rounded-3xl border border-white/5 p-5 md:p-8 shadow-2xl">
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 md:mb-8 gap-4">
+                            <h3 className="font-black text-lg md:text-xl text-white uppercase tracking-tight">Partner Optimization</h3>
+                            <span className="text-[10px] text-red-500 font-black uppercase tracking-[0.3em] bg-red-500/10 px-4 py-1 rounded-full">Protocol Rules</span>
                         </div>
-                        <div className="grid md:grid-cols-3 gap-8">
-                            <div className="space-y-3">
-                                <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center">
-                                    <Send size={18} className="text-red-500" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                            <div className="space-y-3 md:space-y-4">
+                                <div className="w-10 h-10 md:w-12 md:h-12 bg-red-600/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-red-500/10">
+                                    <Send size={20} className="text-red-500" />
                                 </div>
-                                <h4 className="font-bold text-white">Share Your Code</h4>
-                                <p className="text-xs text-gray-500 leading-relaxed">
-                                    Send your unique code <span className="text-white font-mono">{affiliate.referral_code}</span> to friends and family.
+                                <h4 className="font-black text-white uppercase tracking-widest text-[10px] md:text-xs">Dispatch Code</h4>
+                                <p className="text-[10px] md:text-xs text-white/40 leading-relaxed font-medium">
+                                    Broadcast your unique identifier <span className="text-red-500 font-mono font-bold">{affiliate.referral_code}</span> across your networks.
                                 </p>
                             </div>
-                            <div className="space-y-3">
-                                <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center">
-                                    <ArrowUpRight size={18} className="text-blue-500" />
+                            <div className="space-y-3 md:space-y-4">
+                                <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-600/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-blue-500/10">
+                                    <ArrowUpRight size={20} className="text-blue-500" />
                                 </div>
-                                <h4 className="font-bold text-white">They Upgrade</h4>
-                                <p className="text-xs text-gray-500 leading-relaxed">
-                                    When they use your code during upgrade and their payment is approved, you earn!
+                                <h4 className="font-black text-white uppercase tracking-widest text-[10px] md:text-xs">Node Activation</h4>
+                                <p className="text-[10px] md:text-xs text-white/40 leading-relaxed font-medium">
+                                    When nodes (users) upgrade using your link/code, they link permanently to your account.
                                 </p>
                             </div>
-                            <div className="space-y-3">
-                                <div className="w-10 h-10 bg-green-600/10 rounded-xl flex items-center justify-center">
-                                    <DollarSign size={18} className="text-green-500" />
+                            <div className="space-y-3 md:space-y-4">
+                                <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-600/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-emerald-500/10">
+                                    <DollarSign size={20} className="text-emerald-500" />
                                 </div>
-                                <h4 className="font-bold text-white">Earn 20% commission</h4>
-                                <p className="text-xs text-gray-500 leading-relaxed">
-                                    Every approved subscription nets you a 20% instant partner earning. More users, more wealth!
+                                <h4 className="font-black text-white uppercase tracking-widest text-[10px] md:text-xs">Credit Liquidation</h4>
+                                <p className="text-[10px] md:text-xs text-white/40 leading-relaxed font-medium">
+                                    Accumulate bounty for every successful deployment. Liquidate earnings once thresholds are met.
                                 </p>
                             </div>
                         </div>
@@ -272,37 +271,41 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                     key="referrals"
                     initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
                 >
-                    <div className="bg-gray-50 bg-[#161618] rounded-3xl border border-gray-200 border-white/5 overflow-hidden">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-white/5 border-b border-gray-200 border-white/5">
+                    <div className="bg-[#161618] rounded-3xl border border-white/5 overflow-x-auto no-scrollbar shadow-2xl">
+                        <table className="w-full text-left text-sm min-w-[500px]">
+                            <thead className="bg-white/[0.02] border-b border-white/5">
                                 <tr>
-                                    <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest">User</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest">Date</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest text-right">Status</th>
+                                    <th className="px-8 py-6 text-[10px] text-white/20 font-black uppercase tracking-widest">Identified User</th>
+                                    <th className="px-8 py-6 text-[10px] text-white/20 font-black uppercase tracking-widest">Linked Since</th>
+                                    <th className="px-8 py-6 text-[10px] text-white/20 font-black uppercase tracking-widest text-right">Clearance</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-gray-700 text-[#E1E1E1]">
+                            <tbody className="divide-y divide-white/[0.02]">
                                 {referrals.length === 0 ? (
                                     <tr>
-                                        <td colSpan={3} className="px-6 py-12 text-center text-gray-500">
-                                            No referrals yet. Start sharing your code!
+                                        <td colSpan={3} className="px-8 py-20 text-center text-white/20 font-black uppercase tracking-[0.3em] text-[10px]">
+                                            Zero signals captured. Distribute your code.
                                         </td>
                                     </tr>
                                 ) : (
                                     referrals.map((ref: any, idx: number) => (
-                                        <tr key={idx} className="border-b border-gray-200 border-white/5 hover:bg-gray-100 hover:bg-white/[0.02]">
-                                            <td className="px-6 py-4 font-bold text-white">{ref.referred_user_email}</td>
-                                            <td className="px-6 py-4 text-gray-500">{new Date(ref.created_at).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                                                    ref.is_premium ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-gray-500'
+                                        <tr key={idx} className="hover:bg-white/[0.01] transition-colors">
+                                            <td className="px-8 py-6">
+                                                <p className="font-bold text-white tracking-tight">{ref.referred_user_email}</p>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <p className="text-xs text-white/40 font-medium">{new Date(ref.created_at).toLocaleDateString()}</p>
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                                                    ref.is_premium ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-white/5 text-white/20 border border-white/5'
                                                 }`}>
-                                                    {ref.is_premium ? 'Paid' : 'Free'}
+                                                    {ref.is_premium ? 'VIP ELITE' : 'FREE USER'}
                                                 </span>
                                             </td>
                                         </tr>
                                     ))
-                                )}
+                                ) || []}
                             </tbody>
                         </table>
                     </div>
@@ -314,41 +317,49 @@ export const AffiliateDashboard: React.FC<AffiliateDashboardProps> = ({ onBack }
                     key="earnings"
                     initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
                 >
-                    <div className="bg-gray-50 bg-[#161618] rounded-3xl border border-gray-200 border-white/5 overflow-hidden">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-white/5 border-b border-gray-200 border-white/5">
+                    <div className="bg-[#161618] rounded-3xl border border-white/5 overflow-x-auto no-scrollbar shadow-2xl">
+                        <table className="w-full text-left text-sm min-w-[600px]">
+                            <thead className="bg-white/[0.02] border-b border-white/5">
                                 <tr>
-                                    <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest">Date</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest">Sale Amount</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest">Commission (20%)</th>
-                                    <th className="px-6 py-4 text-[10px] text-gray-500 font-black uppercase tracking-widest text-right">Status</th>
+                                    <th className="px-8 py-6 text-[10px] text-white/20 font-black uppercase tracking-widest">Transaction Date</th>
+                                    <th className="px-8 py-6 text-[10px] text-white/20 font-black uppercase tracking-widest">Inflow Volume</th>
+                                    <th className="px-8 py-6 text-[10px] text-white/20 font-black uppercase tracking-widest">Commission Yield</th>
+                                    <th className="px-8 py-6 text-[10px] text-white/20 font-black uppercase tracking-widest">Payer Detail</th>
+                                    <th className="px-8 py-6 text-[10px] text-white/20 font-black uppercase tracking-widest text-right">Settlement</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-gray-700 text-[#E1E1E1]">
+                            <tbody className="divide-y divide-white/[0.02]">
                                 {earnings.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                                            Earnings appear here once your referrals' payments are approved.
+                                        <td colSpan={5} className="px-8 py-20 text-center text-white/20 font-black uppercase tracking-[0.3em] text-[10px]">
+                                            Ledger is empty. Awaiting approved payments.
                                         </td>
                                     </tr>
                                 ) : (
                                     earnings.map((earn: any) => (
-                                        <tr key={earn.id} className="border-b border-gray-200 border-white/5 hover:bg-gray-100 hover:bg-white/[0.02]">
-                                            <td className="px-6 py-4 text-gray-500">{new Date(earn.created_at).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 text-white/40">₦{Number(earn.total_amount || 0).toLocaleString()}</td>
-                                            <td className="px-6 py-4 font-black text-white">₦{Number(earn.amount).toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                                                    earn.status === 'paid' ? 'bg-green-500/20 text-green-500' : 
-                                                    earn.status === 'requested' ? 'bg-blue-500/20 text-blue-500' : 
-                                                    'bg-yellow-500/20 text-yellow-500'
+                                        <tr key={earn.id} className="hover:bg-white/[0.01] transition-colors text-white">
+                                            <td className="px-8 py-6 text-xs text-white/40 font-medium">
+                                                {new Date(earn.created_at).toLocaleDateString()}
+                                                <p className="text-[8px] text-white/20 uppercase tracking-widest mt-1">Ref: {earn.id}</p>
+                                            </td>
+                                            <td className="px-8 py-6 text-xs text-white/40 font-medium">₦{Number(earn.total_amount || 0).toLocaleString()}</td>
+                                            <td className="px-8 py-6 font-black text-red-500 tracking-tight">₦{Number(earn.amount).toLocaleString()}</td>
+                                            <td className="px-8 py-6">
+                                                <p className="text-xs font-bold text-white/60 truncate max-w-[150px]">{earn.payer_email}</p>
+                                                <p className="text-[9px] text-white/20 uppercase tracking-widest">{earn.plan} PLAN</p>
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                                                    earn.status === 'paid' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 
+                                                    earn.status === 'requested' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' : 
+                                                    'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
                                                 }`}>
-                                                    {earn.status}
+                                                    {earn.status === 'paid' ? 'SETTLED' : earn.status === 'requested' ? 'IN REVIEW' : 'PENDING'}
                                                 </span>
                                             </td>
                                         </tr>
                                     ))
-                                )}
+                                ) || []}
                             </tbody>
                         </table>
                     </div>

@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from 'url';
 import fs from "fs/promises";
 import fsSync from "fs";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import axios from "axios";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -46,7 +46,7 @@ app.use('/uploads', express.static(uploadDir));
 app.use(cors({
   origin: true, // Reflects the request origin, good for dynamic Vercel previews
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-user-email'],
   credentials: true
 }));
 app.use(express.json());
@@ -392,9 +392,13 @@ async function initDB() {
     // Seed default settings if they don't exist
     const defaultSettings: Record<string, string> = {
         'TMDB_API_KEY': DEFAULT_TMDB_API_KEY,
-        'premium_price_monthly': '9.99',
+        'premium_price_naira_monthly': '1500',
+        'premium_price_naira_yearly': '15000',
+        'premium_price_dollar_monthly': '9.99',
+        'premium_price_dollar_yearly': '99.99',
         'payment_info': 'Cinode Master Vault: PayPal admin@example.com (Contact admin for bulk)',
-        'allow_downloads': 'true'
+        'allow_downloads': 'true',
+        'affiliate_commission_naira': '100'
     };
 
     for (const [key, value] of Object.entries(defaultSettings)) {
@@ -589,7 +593,7 @@ app.get("/api/tv/:id/season/:season_number", async (req, res) => {
     } catch (dbErr: any) {
         console.error("DB Season Merge Error:", dbErr.message);
     }
-
+ 
     res.json(data);
   } catch (err: any) {
     res.status(500).json({ error: `Season Error: ${err.message}` });
@@ -605,14 +609,17 @@ app.get("/api/search", async (req, res) => {
     res.status(500).json({ error: `Search Error: ${err.message}` });
   }
 });
-
+ 
 // Settings & Premium info
 app.get("/api/settings/public", async (req, res) => {
-    const publicKeys = ['premium_price_monthly', 'payment_info', 'allow_downloads'];
-    
     // Fallback defaults
-    const fallback = {
-        premium_price_monthly: '9.99',
+    const fallback: Record<string, string> = {
+        premium_price_naira_monthly: '1500',
+        premium_price_naira_quarterly: '4000',
+        premium_price_naira_yearly: '15000',
+        premium_price_dollar_monthly: '9.99',
+        premium_price_dollar_quarterly: '25.00',
+        premium_price_dollar_yearly: '99.99',
         payment_info: 'Cinode Master Vault: PayPal admin@example.com (Contact admin for bulk)',
         allow_downloads: 'true'
     };
@@ -623,8 +630,7 @@ app.get("/api/settings/public", async (req, res) => {
 
     try {
         const [rows]: any = await pool.execute(
-            'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?)',
-            ['premium_price_monthly', 'payment_info', 'allow_downloads']
+            'SELECT setting_key, setting_value FROM system_settings'
         );
         const result: any = { ...fallback };
         rows.forEach((s: any) => {
@@ -661,16 +667,16 @@ app.post("/api/user/login", async (req, res) => {
     );
     
     // Check for expired subscriptions and update is_premium
-    const [subs]: any = await pool.execute('SELECT * FROM subscriptions WHERE user_email = ? AND status = "active"', [email]);
+    const [subs]: any = await pool.query('SELECT * FROM subscriptions WHERE user_email = ? AND status = "active"', [email]);
     let isPremium = false;
     for (const sub of subs) {
         if (new Date(sub.expiry_date) < new Date()) {
-            await pool.execute('UPDATE subscriptions SET status = "expired" WHERE id = ?', [sub.id]);
+            await pool.query('UPDATE subscriptions SET status = "expired" WHERE id = ?', [sub.id]);
         } else {
             isPremium = true;
         }
     }
-    await pool.execute('UPDATE users SET is_premium = ? WHERE email = ?', [isPremium ? 1 : 0, email]);
+    await pool.query('UPDATE users SET is_premium = ? WHERE email = ?', [isPremium ? 1 : 0, email]);
 
     res.json({ success: true, email });
   } catch (err: any) {
@@ -690,12 +696,12 @@ app.get("/api/user/me", ensureDB, async (req, res) => {
     );
 
     // Sync subscription status before returning
-    const [subs]: any = await pool.execute('SELECT * FROM subscriptions WHERE user_email = ? AND status = "active"', [email]);
+    const [subs]: any = await pool.query('SELECT * FROM subscriptions WHERE user_email = ? AND status = "active"', [email]);
     let isPremium = false;
     let latestExpiry = null;
     for (const sub of subs) {
         if (new Date(sub.expiry_date) < new Date()) {
-            await pool.execute('UPDATE subscriptions SET status = "expired" WHERE id = ?', [sub.id]);
+            await pool.query('UPDATE subscriptions SET status = "expired" WHERE id = ?', [sub.id]);
         } else {
             isPremium = true;
             if (!latestExpiry || new Date(sub.expiry_date) > new Date(latestExpiry)) {
@@ -703,9 +709,9 @@ app.get("/api/user/me", ensureDB, async (req, res) => {
             }
         }
     }
-    await pool.execute('UPDATE users SET is_premium = ?, premium_since = ? WHERE email = ?', [isPremium ? 1 : 0, isPremium ? (subs[0].start_date || new Date()) : null, email]);
+    await pool.query('UPDATE users SET is_premium = ?, premium_since = ? WHERE email = ?', [isPremium ? 1 : 0, isPremium ? (subs[0].start_date || new Date()) : null, email]);
 
-    const [rows]: any = await pool.execute(
+    const [rows]: any = await pool.query(
         'SELECT * FROM users WHERE email = ?',
         [email]
     );
@@ -1354,8 +1360,11 @@ app.post("/api/admin/payments/review", ensureDB, adminOnly, async (req, res) => 
             if (refCode) {
                 const [affs]: any = await pool.execute('SELECT id FROM affiliates WHERE referral_code = ?', [refCode]);
                 if (affs.length > 0) {
-                    const submissionAmount = Number(submission.amount);
-                    const earningAmount = Math.floor(submissionAmount * 0.2); // 20% commission
+                    // Get configurable commission from settings
+                    const [commissionSetting]: any = await pool.execute('SELECT setting_value FROM system_settings WHERE setting_key = "affiliate_commission_naira"');
+                    const commissionAmount = commissionSetting.length > 0 ? Number(commissionSetting[0].setting_value) : 100;
+                    
+                    const earningAmount = commissionAmount;
                     
                     // Avoid double earning for same submission if reviewed multiple times
                     const [existingEarn]: any = await pool.execute('SELECT id FROM affiliate_earnings WHERE payment_submission_id = ?', [id]);
@@ -1652,7 +1661,7 @@ app.delete("/api/admin/users/:id", ensureDB, adminOnly, async (req, res) => {
     
     try {
       // Find the user first to check if they are a core admin
-      const [users]: any = await pool.execute('SELECT email FROM users WHERE id = ?', [id]);
+      const [users]: any = await pool.query('SELECT email FROM users WHERE id = ?', [id]);
       if (users.length === 0) {
           return res.status(404).json({ error: "User not found" });
       }
@@ -1664,7 +1673,7 @@ app.delete("/api/admin/users/:id", ensureDB, adminOnly, async (req, res) => {
           return res.status(403).json({ error: "Cannot delete core system administrator" });
       }
 
-      await pool.execute('DELETE FROM users WHERE id = ?', [id]);
+      await pool.query('DELETE FROM users WHERE id = ?', [id]);
       console.log(`Successfully deleted user ID: ${id} (${email})`);
       res.json({ success: true });
     } catch (err: any) {
@@ -1752,7 +1761,50 @@ app.post("/api/history", ensureDB, async (req, res) => {
     }
 });
 
+app.get("/api/recommendations", ensureDB, async (req, res) => {
+    const user_email = req.headers["x-user-email"];
+    if (!user_email) return res.json([]);
+
+    try {
+        const [history]: any = await pool.execute('SELECT title FROM history WHERE user_email = ? ORDER BY viewed_at DESC LIMIT 10', [user_email]);
+        if (history.length === 0) {
+            return res.json([]);
+        }
+
+        const titles = history.map((h: any) => h.title).join(", ");
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) return res.json([]);
+
+        const ai = new GoogleGenAI({
+          apiKey: apiKey,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build',
+            }
+          }
+        });
+        
+        const response: GenerateContentResponse = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: [{
+                role: "user",
+                parts: [{ text: `Based on these movies/TV shows: ${titles}, recommend 5 similar popular titles. Return ONLY a JSON array of strings (the titles). No markdown, no explanation.` }]
+            }]
+        });
+
+        const responseText = response.text || "[]";
+        const cleaned = responseText.replace(/```json|```/g, "").trim();
+        const recommendedTitles = JSON.parse(cleaned);
+
+        res.json(recommendedTitles);
+    } catch (err: any) {
+        console.error("Recommendations failure:", err.message);
+        res.json([]); // Fail gracefully
+    }
+});
+
 async function startServer() {
+  console.log("Starting server process...");
   initDB(); // Launch in background
 
   // Background DB reconnection check if it failed initially

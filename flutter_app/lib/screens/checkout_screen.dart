@@ -108,9 +108,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildPlanCard('MONTHLY', '₦1,500', Icons.access_time_rounded)),
+                Expanded(child: _buildPlanCard('MONTHLY', '₦${_publicSettings?['premium_price_naira_monthly'] ?? '1,500'}', Icons.access_time_rounded)),
                 const SizedBox(width: 12),
-                Expanded(child: _buildPlanCard('IMPERIAL', '₦15,000', Icons.shield_moon_rounded, isYearly: true)),
+                Expanded(child: _buildPlanCard('IMPERIAL', '₦${_publicSettings?['premium_price_naira_yearly'] ?? '15,000'}', Icons.shield_moon_rounded, isYearly: true)),
               ],
             ),
             
@@ -381,7 +381,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             final payload = {
                 'user_email': widget.userEmail,
                 'plan': _selectedPlan,
-                'amount': _selectedPlan.contains('MONTHLY') ? 1500 : 15000,
+                'amount': _selectedPlan.contains('MONTHLY') 
+                    ? (int.tryParse(_publicSettings?['premium_price_naira_monthly']?.toString() ?? '1500') ?? 1500)
+                    : (int.tryParse(_publicSettings?['premium_price_naira_yearly']?.toString() ?? '15000') ?? 15000),
                 'sender_name': _senderNameController.text,
                 'transaction_reference': _transactionRefController.text,
                 'referral_code': _refController.text,

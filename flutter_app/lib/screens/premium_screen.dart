@@ -2,12 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'checkout_screen.dart';
 
-class PremiumScreen extends StatelessWidget {
+class PremiumScreen extends StatefulWidget {
   final String userEmail;
   const PremiumScreen({super.key, required this.userEmail});
 
   @override
+  State<PremiumScreen> createState() => _PremiumScreenState();
+}
+
+class _PremiumScreenState extends State<PremiumScreen> {
+  Map<String, dynamic>? _publicSettings;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = await ApiService().getPublicSettings();
+    if (mounted) {
+      setState(() {
+        _publicSettings = settings;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) return const Scaffold(backgroundColor: Color(0xFF0A0A0B), body: Center(child: CircularProgressIndicator(color: Colors.red)));
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0B),
       appBar: AppBar(
@@ -62,14 +87,14 @@ class PremiumScreen extends StatelessWidget {
           _buildTierCard(
             context: context,
             title: 'CLASSIC MONTHLY',
-            price: '1,500',
+            price: _publicSettings?['premium_price_naira_monthly'] ?? '1,500',
             label: '/ MONTH',
           ),
           const SizedBox(height: 15),
           _buildTierCard(
             context: context,
             title: 'IMPERIAL ANNUAL',
-            price: '15,000',
+            price: _publicSettings?['premium_price_naira_yearly'] ?? '15,000',
             label: '/ YEAR',
             isPopular: true,
           ),
@@ -83,7 +108,7 @@ class PremiumScreen extends StatelessWidget {
           child: _buildTierCard(
             context: context,
             title: 'CLASSIC MONTHLY',
-            price: '1,500',
+            price: _publicSettings?['premium_price_naira_monthly'] ?? '1,500',
             label: '/ MONTH',
           ),
         ),
@@ -92,7 +117,7 @@ class PremiumScreen extends StatelessWidget {
           child: _buildTierCard(
             context: context,
             title: 'IMPERIAL ANNUAL',
-            price: '15,000',
+            price: _publicSettings?['premium_price_naira_yearly'] ?? '15,000',
             label: '/ YEAR',
             isPopular: true,
           ),
@@ -151,7 +176,7 @@ class PremiumScreen extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => CheckoutScreen(userEmail: userEmail)));
+                Navigator.push(context, MaterialPageRoute(builder: (context) => CheckoutScreen(userEmail: widget.userEmail)));
               },
               child: const Text('PURCHASE ACCESS', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 10)),
             ),

@@ -159,16 +159,26 @@ class _AffiliateDashboardScreenState extends State<AffiliateDashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: const Color(0xFF111112),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
+        boxShadow: [
+          BoxShadow(color: color.withOpacity(0.03), blurRadius: 20, spreadRadius: -5),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color.withOpacity(0.5), size: 16),
-          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 14),
+          ),
+          const SizedBox(height: 12),
           Text(label, style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1)),
           Text(value, style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
         ],
@@ -194,8 +204,9 @@ class _AffiliateDashboardScreenState extends State<AffiliateDashboardScreen> {
         margin: const EdgeInsets.only(right: 10),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: active ? Colors.redAccent : Colors.white.withOpacity(0.05),
+          color: active ? Colors.redAccent : const Color(0xFF161618),
           borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: active ? Colors.redAccent : Colors.white.withOpacity(0.05)),
         ),
         child: Text(label, style: TextStyle(color: active ? Colors.white : Colors.white54, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
       ),
@@ -223,25 +234,25 @@ class _AffiliateDashboardScreenState extends State<AffiliateDashboardScreen> {
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: const Color(0xFF111112),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Row(
         children: [
           Container(
-            width: 30, h: 30,
-            decoration: BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
-            child: Center(child: Text('$step', style: const TextStyle(fontWeight: FontWeight.bold))),
+            width: 30, height: 30,
+            decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), shape: BoxShape.circle),
+            child: Center(child: Text('$step', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent))),
           ),
           const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1, color: Colors.white70)),
                 const SizedBox(height: 4),
-                Text(desc, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                Text(desc, style: const TextStyle(color: Colors.white24, fontSize: 10)),
               ],
             ),
           ),
@@ -278,9 +289,9 @@ class _AffiliateDashboardScreenState extends State<AffiliateDashboardScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.01),
+          color: const Color(0xFF111112),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.03)),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
         child: Row(
           children: [
@@ -290,35 +301,36 @@ class _AffiliateDashboardScreenState extends State<AffiliateDashboardScreen> {
                 children: [
                   Text(
                     'REFERRAL COMMISSION', 
-                    style: GoogleFonts.manrope(color: Colors.white10, fontSize: 7, fontWeight: FontWeight.black, letterSpacing: 2)
+                    style: GoogleFonts.manrope(color: Colors.redAccent, fontSize: 7, fontWeight: FontWeight.black, letterSpacing: 2)
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     '₦${NumberFormat('#,###').format(double.parse(e['amount'].toString()))}', 
-                    style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.black, fontSize: 16)
+                    style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.black, fontSize: 18)
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
-                      Text('SALE: ₦${NumberFormat('#,###').format(double.parse((e['total_amount'] ?? 0).toString()))}', style: TextStyle(color: Colors.white24, fontSize: 9)),
-                      const SizedBox(width: 8),
-                      Text('•', style: TextStyle(color: Colors.white10, fontSize: 9)),
-                      const SizedBox(width: 8),
-                      Text(e['created_at'].toString().split('T')[0], style: const TextStyle(color: Colors.white10, fontSize: 9)),
+                      Text('SALE: ₦${NumberFormat('#,###').format(double.parse((e['total_amount'] ?? 0).toString()))}', style: const TextStyle(color: Colors.white24, fontSize: 9)),
+                      const SizedBox(width: 12),
+                      Text('•', style: TextStyle(color: Colors.white.withOpacity(0.05), fontSize: 9)),
+                      const SizedBox(width: 12),
+                      Text(e['created_at'].toString().split('T')[0], style: const TextStyle(color: Colors.white24, fontSize: 9)),
                     ],
                   ),
                 ],
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: e['status'] == 'paid' ? Colors.blue.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: e['status'] == 'paid' ? Colors.green.withOpacity(0.05) : Colors.orange.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: e['status'] == 'paid' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1)),
               ),
               child: Text(
                 e['status'].toString().toUpperCase(), 
-                style: TextStyle(color: e['status'] == 'paid' ? Colors.blue : Colors.orange, fontSize: 8, fontWeight: FontWeight.black, letterSpacing: 1)
+                style: TextStyle(color: e['status'] == 'paid' ? Colors.green : Colors.orange, fontSize: 8, fontWeight: FontWeight.black, letterSpacing: 1)
               ),
             ),
           ],

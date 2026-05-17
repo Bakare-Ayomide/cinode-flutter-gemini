@@ -19,18 +19,18 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { movieApi, setAuthEmail } from '../lib/api';
 import { PaymentConfig } from '../types';
-import { GoogleGenAI } from "@google/genai";
 
 interface CheckoutPageProps {
   user: any;
-  plan?: 'monthly' | 'yearly';
+  plan?: 'monthly' | 'quarterly' | 'yearly';
+  publicSettings: any;
   onSuccess: () => void;
   onBack: () => void;
 }
 
-export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialPlan, onSuccess, onBack }) => {
+export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialPlan, publicSettings, onSuccess, onBack }) => {
   const [step, setStep] = useState(1);
-  const [plan, setPlan] = useState<'monthly' | 'yearly'>(initialPlan || 'monthly');
+  const [plan, setPlan] = useState<'monthly' | 'quarterly' | 'yearly'>(initialPlan || 'monthly');
   const [config, setConfig] = useState<PaymentConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -45,8 +45,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialP
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
 
-  const price = plan === 'monthly' ? 1500 : 15000;
-  const planLabel = plan === 'monthly' ? 'Monthly' : 'Yearly';
+  const monthlyNaira = publicSettings?.premium_price_naira_monthly;
+  const quarterlyNaira = publicSettings?.premium_price_naira_quarterly;
+  const yearlyNaira = publicSettings?.premium_price_naira_yearly;
+  
+  const monthlyDollar = publicSettings?.premium_price_dollar_monthly;
+  const quarterlyDollar = publicSettings?.premium_price_dollar_quarterly;
+  const yearlyDollar = publicSettings?.premium_price_dollar_yearly;
+  
+  const price = plan === 'monthly' ? monthlyNaira : plan === 'quarterly' ? quarterlyNaira : yearlyNaira;
+  const dollarPrice = plan === 'monthly' ? monthlyDollar : plan === 'quarterly' ? quarterlyDollar : yearlyDollar;
+  
+  const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
 
   const extractPaymentInfo = async (imageUrl: string) => {
     setIsAiProcessing(true);
@@ -206,7 +216,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialP
                 <p className="text-[7px] text-white/20 uppercase tracking-[0.4em] font-black">Select Deployment Tier</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div 
                   onClick={() => setPlan('monthly')}
                   className={`p-3 rounded-xl cursor-pointer border-2 transition-all group relative overflow-hidden ${
@@ -219,26 +229,46 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialP
                     </div>
                   </div>
                   <h3 className="text-[10px] font-black mb-0.5 uppercase tracking-wider text-white/80">Monthly</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-black italic font-serif text-white">₦1,500</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-black italic font-serif text-white">₦{Number(monthlyNaira).toLocaleString()}</span>
+                    <span className="text-[8px] font-bold text-white/40">(${Number(monthlyDollar).toLocaleString()})</span>
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => setPlan('quarterly')}
+                  className={`p-3 rounded-xl cursor-pointer border-2 transition-all relative group overflow-hidden ${
+                    plan === 'quarterly' ? 'bg-blue-600/10 border-blue-600 shadow-[0_0_20px_rgba(37,99,235,0.15)]' : 'bg-[#121214] border-white/5 hover:border-white/10'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className={`p-1.5 rounded-lg transition-transform group-hover:scale-110 ${plan === 'quarterly' ? 'bg-blue-600/20' : 'bg-white/5'}`}>
+                      <Sparkles className={plan === 'quarterly' ? 'text-blue-500' : 'text-gray-500'} size={14} />
+                    </div>
+                  </div>
+                  <h3 className="text-[10px] font-black mb-0.5 uppercase tracking-wider text-white/80">Quarter</h3>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-black italic font-serif text-white">₦{Number(quarterlyNaira).toLocaleString()}</span>
+                    <span className="text-[8px] font-bold text-white/40">(${Number(quarterlyDollar).toLocaleString()})</span>
                   </div>
                 </div>
 
                 <div 
                   onClick={() => setPlan('yearly')}
                   className={`p-3 rounded-xl cursor-pointer border-2 transition-all relative group overflow-hidden ${
-                    plan === 'yearly' ? 'bg-red-600/10 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.15)]' : 'bg-[#121214] border-white/5 hover:border-white/10'
+                    plan === 'yearly' ? 'bg-amber-600/10 border-amber-600 shadow-[0_0_20px_rgba(217,119,6,0.15)]' : 'bg-[#121214] border-white/5 hover:border-white/10'
                   }`}
                 >
-                  <div className="absolute top-0 right-0 px-2 py-0.5 bg-red-600 text-[5px] font-black uppercase tracking-widest rounded-bl-md z-10 text-white">Best Value</div>
+                  <div className="absolute top-0 right-0 px-2 py-0.5 bg-amber-600 text-[5px] font-black uppercase tracking-widest rounded-bl-md z-10 text-white">Best Value</div>
                   <div className="flex justify-between items-start mb-2">
-                    <div className={`p-1.5 rounded-lg transition-transform group-hover:scale-110 ${plan === 'yearly' ? 'bg-red-600/20' : 'bg-white/5'}`}>
-                      <ShieldCheck className={plan === 'yearly' ? 'text-red-500' : 'text-gray-500'} size={14} />
+                    <div className={`p-1.5 rounded-lg transition-transform group-hover:scale-110 ${plan === 'yearly' ? 'bg-amber-600/20' : 'bg-white/5'}`}>
+                      <ShieldCheck className={plan === 'yearly' ? 'text-amber-500' : 'text-gray-500'} size={14} />
                     </div>
                   </div>
-                  <h3 className="text-[10px] font-black mb-0.5 uppercase tracking-wider text-white/80">Imperial</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-black italic font-serif text-white">₦15,000</span>
+                  <h3 className="text-[10px] font-black mb-0.5 uppercase tracking-wider text-white/80">Yearly</h3>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-black italic font-serif text-white">₦{Number(yearlyNaira).toLocaleString()}</span>
+                    <span className="text-[8px] font-bold text-white/40">(${Number(yearlyDollar).toLocaleString()})</span>
                   </div>
                 </div>
               </div>
@@ -296,7 +326,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, plan: initialP
                 </button>
                 <div>
                   <h1 className="text-sm font-black tracking-tight uppercase italic font-serif leading-tight text-white">Payment Verification</h1>
-                  <p className="text-[8px] text-white/40 font-black uppercase tracking-widest leading-none mt-1">{planLabel} — ₦{price.toLocaleString()}</p>
+                  <p className="text-[8px] text-white/40 font-black uppercase tracking-widest leading-none mt-1">{planLabel} — ₦{Number(price).toLocaleString()} / ${Number(dollarPrice).toLocaleString()}</p>
                 </div>
               </div>
 

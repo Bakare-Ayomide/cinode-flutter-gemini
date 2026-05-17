@@ -11,12 +11,14 @@ import {
   Save,
   Plus,
   RefreshCw,
+  Menu,
   ShieldCheck,
   Check,
   X,
   Copy,
   CreditCard,
   DollarSign,
+  Rocket,
   Megaphone,
   Bell,
   Eye,
@@ -47,6 +49,9 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<{id: number | string, email: string} | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [vaultTab, setVaultTab] = useState<'all' | 'movie' | 'tv' | 'episode'>('all');
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
   // Form states
   const [newOverride, setNewOverride] = useState<any>({
@@ -256,6 +261,16 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleSaveConfig = async (key: string, value: any) => {
+    try {
+      await movieApi.saveAdminSetting(key, value);
+      showMsg('success', `${key} updated`);
+      fetchData();
+    } catch (err) {
+      showMsg('error', `Failed to update ${key}`);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#0A0A0B] text-white relative">
       {/* Delete Confirmation Modal */}
@@ -305,70 +320,139 @@ const AdminDashboard: React.FC = () => {
       </AnimatePresence>
 
       {/* Tab Navigation moved to a subheader pattern */}
-      <div className="flex flex-1 flex-col md:flex-row overflow-hidden pt-4">
-        {/* Sidebar / Mobile Nav */}
-        <div className="flex md:flex-col items-center md:items-stretch overflow-x-auto md:overflow-x-visible border-b md:border-b-0 md:border-r border-white/5 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1 no-scrollbar bg-gray-50/50 bg-[#0D0D0E]/50 md:bg-transparent md:w-64">
-          <button 
-            onClick={() => setActiveTab('stats')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'stats' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
-          >
-            <Database size={18} /> <span className="hidden md:inline">Overview</span>
-          </button>
-          
-          <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-white/20 mt-4 mb-1 ml-4">Core</div>
-          <button 
-            onClick={() => setActiveTab('users')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'users' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
-          >
-            <Users size={18} /> <span className="hidden md:inline">Users</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('content')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'content' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
-          >
-            <Film size={18} /> <span className="hidden md:inline">Vault</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'settings' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
-          >
-            <Settings size={18} /> <span className="hidden md:inline">Config</span>
-          </button>
+      <div className="flex flex-1 flex-col md:flex-row overflow-hidden relative">
+        {/* Mobile Top Menu Reverted */}
+        <div className="md:hidden flex flex-col bg-[#0D0D0E] border-b border-white/5 w-full shrink-0">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-2">
+              <Rocket className="text-red-500" size={20} />
+              <h1 className="text-sm font-black uppercase tracking-tighter italic font-serif">Admin Command</h1>
+            </div>
+            <button 
+              onClick={() => window.location.href = '/'}
+              className="text-[10px] font-black uppercase tracking-widest text-white/20"
+            >
+              Exit
+            </button>
+          </div>
+          <div className="flex overflow-x-auto no-scrollbar p-2 gap-2 border-t border-white/5">
+             {[
+               { id: 'stats', label: 'Stats' },
+               { id: 'users', label: 'Users' },
+               { id: 'content', label: 'Vault' },
+               { id: 'notifications', label: 'Notifs' },
+               { id: 'payments', label: 'Sales' },
+               { id: 'payconfig', label: 'Config' },
+               { id: 'affiliates', label: 'Affiliates' },
+               { id: 'ads', label: 'Ads' },
+               { id: 'settings', label: 'Registry' }
+             ].map(t => (
+               <button 
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id as any)}
+                  className={`flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === t.id ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40'}`}
+               >
+                 {t.label}
+               </button>
+             ))}
+          </div>
+        </div>
 
-          <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-white/20 mt-4 mb-1 ml-4">Growth</div>
-          <button 
-            onClick={() => setActiveTab('payments')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'payments' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
-          >
-            <CreditCard size={18} /> <span className="hidden md:inline">Payments</span>
-            {stats?.pending_payments > 0 && <span className="ml-auto bg-red-500 text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-black text-white">{stats.pending_payments}</span>}
-          </button>
-          <button 
-            onClick={() => setActiveTab('payconfig')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'payconfig' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
-          >
-            <DollarSign size={18} /> <span className="hidden md:inline">Checkout Config</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('affiliates')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'affiliates' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
-          >
-            <ArrowUpRight size={18} /> <span className="hidden md:inline">Affiliates</span>
-          </button>
+        {/* Sidebar / Desktop Nav */}
+        <div className="hidden md:flex flex-col md:w-64 flex-shrink-0 w-full md:h-full border-r border-white/5 bg-[#0D0D0E]/30 backdrop-blur-md relative z-[50]">
+          <div className="flex flex-col p-4 gap-2 w-full h-full">
+            <div className="space-y-1">
+              <p className="px-3 text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-4">Command Center</p>
+              
+              <button 
+                  onClick={() => { setActiveTab('stats'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${activeTab === 'stats' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <Database size={18} className={activeTab === 'stats' ? 'text-white' : 'text-red-500 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">Overview</span>
+              </button>
+              
+              <button 
+                  onClick={() => { setActiveTab('users'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${activeTab === 'users' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <Users size={18} className={activeTab === 'users' ? 'text-white' : 'text-blue-500 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">User Base</span>
+              </button>
+              
+              <button 
+                  onClick={() => { setActiveTab('content'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${activeTab === 'content' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <Film size={18} className={activeTab === 'content' ? 'text-white' : 'text-purple-500 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">Content Vault</span>
+              </button>
 
-          <div className="hidden md:block text-[9px] font-black uppercase tracking-widest text-white/20 mt-4 mb-1 ml-4">Audience</div>
-          <button 
-            onClick={() => setActiveTab('ads')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'ads' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
-          >
-            <Megaphone size={18} /> <span className="hidden md:inline">Ad Manager</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('notifications')}
-            className={`flex-shrink-0 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === 'notifications' ? 'bg-red-600 text-white' : 'text-white/40 hover:bg-gray-100 hover:bg-white/5 hover:text-gray-900 hover:text-white'}`}
-          >
-            <Bell size={18} /> <span className="hidden md:inline">Notifications</span>
-          </button>
+              <button 
+                  onClick={() => { setActiveTab('notifications'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${activeTab === 'notifications' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <Bell size={18} className={activeTab === 'notifications' ? 'text-white' : 'text-yellow-500 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">Announcements</span>
+              </button>
+            </div>
+
+            <div className="mt-8 space-y-1">
+              <p className="px-3 text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-4">Operations</p>
+              
+              <button 
+                  onClick={() => { setActiveTab('payments'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group relative ${activeTab === 'payments' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <CreditCard size={18} className={activeTab === 'payments' ? 'text-white' : 'text-green-500 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">Transactions</span>
+                  {stats?.pending_payments > 0 && <span className="ml-auto bg-white/10 text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-black text-white">{stats.pending_payments}</span>}
+              </button>
+
+              <button 
+                  onClick={() => { setActiveTab('payconfig'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${activeTab === 'payconfig' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <DollarSign size={18} className={activeTab === 'payconfig' ? 'text-white' : 'text-emerald-500 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">Currency UI</span>
+              </button>
+
+              <button 
+                  onClick={() => { setActiveTab('settings'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${activeTab === 'settings' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <Settings size={18} className={activeTab === 'settings' ? 'text-white' : 'text-gray-500 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">Registry</span>
+              </button>
+            </div>
+
+            <div className="mt-8 space-y-1">
+              <p className="px-3 text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-4">Growth</p>
+              
+              <button 
+                  onClick={() => { setActiveTab('affiliates'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${activeTab === 'affiliates' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <ArrowUpRight size={18} className={activeTab === 'affiliates' ? 'text-white' : 'text-blue-400 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">Affiliates</span>
+              </button>
+
+              <button 
+                  onClick={() => { setActiveTab('ads'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${activeTab === 'ads' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <Megaphone size={18} className={activeTab === 'ads' ? 'text-white' : 'text-orange-500 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">Ad Platform</span>
+              </button>
+            </div>
+            
+            <button 
+                onClick={() => window.location.href = '/'}
+                className="mt-auto w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-sm font-black uppercase tracking-widest text-white/20 hover:text-white transition-all border border-white/5"
+            >
+                <ChevronRight size={16} /> Exit Admin
+            </button>
+          </div>
         </div>
 
         {/* Main Content Area */}
@@ -690,8 +774,8 @@ const AdminDashboard: React.FC = () => {
 
                 <div className="space-y-6">
                     <h2 className="text-xl md:text-2xl font-serif italic text-white">Affiliate Network</h2>
-                    <div className="bg-[#0D0D0E] border border-white/5 rounded-2xl overflow-hidden shadow-sm">
-                        <table className="w-full text-left text-sm">
+                    <div className="bg-[#0D0D0E] border border-white/5 rounded-2xl overflow-x-auto shadow-sm no-scrollbar">
+                        <table className="w-full text-left text-sm min-w-[700px]">
                             <thead className="bg-white/5 border-b border-white/5">
                                 <tr>
                                     <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Affiliate</th>
@@ -757,25 +841,30 @@ const AdminDashboard: React.FC = () => {
                              className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 text-gray-600 text-white/70"
                         > Mark All as Paid </button>
                     </div>
-                    <div className="bg-[#0D0D0E] border border-white/5 rounded-2xl overflow-hidden shadow-sm">
-                        <table className="w-full text-left text-sm">
+                    <div className="bg-[#0D0D0E] border border-white/5 rounded-2xl overflow-x-auto shadow-sm no-scrollbar">
+                        <table className="w-full text-left text-sm min-w-[700px]">
                             <thead className="bg-white/5 border-b border-white/5">
                                 <tr>
                                     <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Recipient</th>
-                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Amount</th>
-                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Payer Info</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Commission</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Pricing Flow</th>
+                                    <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest">Payer Detail</th>
                                     <th className="px-6 py-4 text-[10px] text-white/20 font-black uppercase tracking-widest text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="text-gray-700 text-[#E1E1E1]">
                                 {earnings.filter(e => e.status === 'pending').length === 0 ? (
-                                    <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">No pending payouts. Everything is cleared!</td></tr>
+                                    <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">No pending payouts. Everything is cleared!</td></tr>
                                 ) : (
                                     earnings.filter(e => e.status === 'pending').map(earn => (
                                         <tr key={earn.id} className="border-b border-white/5 hover:bg-gray-200/50 hover:bg-white/[0.02]">
                                             <td className="px-6 py-4 font-medium">{earn.affiliate_email}</td>
-                                            <td className="px-6 py-4 font-black">₦{earn.amount}</td>
-                                            <td className="px-6 py-4 text-xs text-white/40">From {earn.payer_email} ({earn.plan})</td>
+                                            <td className="px-6 py-4 font-black text-red-500">₦{earn.amount}</td>
+                                            <td className="px-6 py-4 text-xs font-mono text-white/40">₦{Number(earn.total_amount || 0).toLocaleString()} <span className="text-[9px] uppercase">Entry</span></td>
+                                            <td className="px-6 py-4">
+                                                <p className="text-xs font-bold text-white">{earn.payer_email}</p>
+                                                <p className="text-[10px] text-white/20 font-black uppercase">{earn.plan}</p>
+                                            </td>
                                             <td className="px-6 py-4 text-right">
                                                 <button 
                                                     onClick={async () => {
@@ -913,8 +1002,8 @@ const AdminDashboard: React.FC = () => {
                     <h2 className="text-xl md:text-2xl font-serif italic text-white">Active Campaigns</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {ads.map(item => (
-                            <div key={item.id} className="bg-[#0D0D0E] border border-white/5 rounded-3xl p-6 flex gap-6 shadow-sm">
-                                <div className="w-16 h-16 bg-white/5 rounded-2xl shrink-0 flex items-center justify-center relative overflow-hidden">
+                            <div key={item.id} className="bg-[#0D0D0E] border border-white/5 rounded-3xl p-6 flex flex-col sm:flex-row gap-6 shadow-sm">
+                                <div className="w-16 h-16 bg-white/5 rounded-2xl shrink-0 flex items-center justify-center relative overflow-hidden mx-auto sm:mx-0">
                                     {item.type === 'image' && <img src={item.media_url} className="w-full h-full object-cover" />}
                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                                         <Megaphone size={20} className="text-white/40" />
@@ -1053,7 +1142,11 @@ const AdminDashboard: React.FC = () => {
                     <h2 className="text-xl md:text-2xl font-serif italic text-white">Notification History</h2>
                     <div className="space-y-4">
                         {notifications.map((n, idx) => (
-                            <div key={n.id} className="bg-[#0D0D0E] border border-white/5 p-6 rounded-2xl flex items-center gap-6 shadow-sm hover:border-white/10 transition-all">
+                            <div 
+                              key={n.id} 
+                              onClick={() => setSelectedNotification(n)}
+                              className="bg-[#0D0D0E] border border-white/5 p-6 rounded-2xl flex items-center gap-6 shadow-sm hover:border-white/10 transition-all cursor-pointer group"
+                            >
                                 <div className="p-3 rounded-2xl bg-white/5 shadow-inner">
                                     <Bell size={24} className="text-white/40" />
                                 </div>
@@ -1146,12 +1239,12 @@ const AdminDashboard: React.FC = () => {
                               className="px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-red-600/10 text-red-500 border border-red-500/20 hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-600/5 group flex items-center gap-2"
                             >
                               <X size={14} className="group-hover:rotate-90 transition-transform" />
-                              Discontinue
+                              Revoke
                             </button>
                           ) : (
-                            <div className="flex items-center bg-white/5 rounded-lg border border-gray-200 border-white/5 group hover:border-yellow-500/30 transition-colors">
-                               <div className="pl-3 pr-1 text-yellow-600 text-yellow-500/60 group-hover:text-yellow-500 transition-colors">
-                                 <DollarSign size={12} />
+                            <div className="flex items-center bg-red-600/10 rounded-lg border border-red-500/20 group hover:border-red-500/40 transition-colors">
+                               <div className="pl-3 pr-1 text-red-500 group-hover:text-red-400 transition-colors">
+                                 <Plus size={12} />
                                </div>
                                <select 
                                   onChange={(e) => {
@@ -1160,11 +1253,11 @@ const AdminDashboard: React.FC = () => {
                                         e.target.value = '';
                                     }
                                   }}
-                                  className="bg-transparent text-[10px] font-bold uppercase tracking-widest text-white/40 focus:text-gray-900 focus:text-white focus:outline-none py-2 pr-3 cursor-pointer appearance-none outline-none"
+                                  className="bg-transparent text-[10px] font-bold uppercase tracking-widest text-red-500/80 focus:text-red-500 focus:outline-none py-2 pr-3 cursor-pointer appearance-none outline-none"
                                >
-                                  <option value="" className="bg-white bg-[#111113] text-white">Grant VIP</option>
+                                  <option value="" className="bg-[#111113] text-red-500">Grant VIP</option>
                                   {GRANT_DURATIONS.map(d => (
-                                      <option key={d.value} value={d.value} className="bg-white bg-[#111113] text-white">{d.label}</option>
+                                      <option key={d.value} value={d.value} className="bg-[#111113] text-white font-sans">{d.label}</option>
                                   ))}
                                </select>
                             </div>
@@ -1315,9 +1408,34 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               <div className="space-y-6">
-                <h2 className="text-xl md:text-2xl font-serif italic uppercase text-white">Active Vault</h2>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <h2 className="text-xl md:text-2xl font-serif italic uppercase text-white">Active Vault</h2>
+                  <div className="flex bg-[#0A0A0B] p-1 rounded-xl border border-white/5 no-scrollbar overflow-x-auto w-full md:w-auto">
+                    {[
+                      { id: 'all', label: 'All' },
+                      { id: 'movie', label: 'Movies' },
+                      { id: 'tv', label: 'Series' },
+                      { id: 'episode', label: 'Episodes' }
+                    ].map(tab => (
+                      <button 
+                        key={tab.id}
+                        onClick={() => setVaultTab(tab.id as any)}
+                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${vaultTab === tab.id ? 'bg-red-600 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 gap-4">
-                  {overrides.filter(ov => (ov.title?.toLowerCase().includes(searchFilter.toLowerCase()) || ov.tmdb_id.toString().includes(searchFilter))).map(ov => (
+                  {overrides.filter(ov => {
+                    const matchesSearch = ov.title?.toLowerCase().includes(searchFilter.toLowerCase()) || ov.tmdb_id.toString().includes(searchFilter);
+                    const matchesTab = vaultTab === 'all' || 
+                      (vaultTab === 'movie' && ov.media_type === 'movie') || 
+                      (vaultTab === 'tv' && ov.media_type === 'tv' && !ov.episode_number) ||
+                      (vaultTab === 'episode' && ov.media_type === 'tv' && ov.episode_number);
+                    return matchesSearch && matchesTab;
+                  }).map(ov => (
                     <div key={ov.id} className="p-4 md:p-6 bg-[#0D0D0E] border border-white/5 rounded-xl flex items-center gap-4 shadow-sm">
                       <div className="w-10 h-10 md:w-12 md:h-12 flex-shrink-0 bg-white/5 rounded-lg flex items-center justify-center text-white/20">
                         <Film size={20} />
@@ -1361,85 +1479,232 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'settings' && (
             <div className="space-y-8 md:space-y-12">
-              <div className="space-y-6 bg-[#0D0D0E] p-6 md:p-8 border border-white/5 rounded-2xl shadow-sm">
-                <h2 className="text-xl font-serif italic font-light text-white">Global Registry</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h3 className="text-xs uppercase tracking-widest text-gray-400 text-[#E5E5E5]/40 font-bold">Fast Config</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-white bg-white/5 border border-white/10 rounded-xl">
-                        <span className="text-xs uppercase tracking-widest font-bold text-white">Premium Price</span>
-                        <input 
-                          type="text" 
-                          placeholder="9.99"
-                          className="bg-transparent text-right border-b border-white/10 outline-none focus:border-red-600 transition-all text-red-500 font-bold"
-                          onChange={(e) => setNewSetting({ key: 'premium_price_monthly', value: e.target.value })}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2 p-4 bg-white bg-white/5 border border-white/10 rounded-xl">
-                        <span className="text-xs uppercase tracking-widest font-bold text-white">Payment Info</span>
-                        <textarea 
-                          placeholder="PayPal: admin@example.com"
-                          className="bg-transparent border-b border-white/10 outline-none focus:border-red-600 transition-all text-gray-600 text-white/60 text-sm h-20"
-                          onChange={(e) => setNewSetting({ key: 'payment_info', value: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <h3 className="text-xs uppercase tracking-widest text-gray-400 text-[#E5E5E5]/40 font-bold">Custom Entry</h3>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Key</label>
-                        <input 
-                          type="text" 
-                          value={newSetting.key}
-                          onChange={(e) => setNewSetting({...newSetting, key: e.target.value})}
-                          className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm text-white"
-                          placeholder="TMDB_API_KEY"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Value</label>
-                        <textarea 
-                          value={newSetting.value || ''}
-                          onChange={(e) => setNewSetting({...newSetting, value: e.target.value})}
-                          className="w-full bg-[#0A0A0B] border border-white/10 px-4 py-2.5 md:py-3 rounded-lg focus:border-red-600 outline-none text-xs md:text-sm h-24 text-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleSaveSetting}
-                  className="w-full md:w-auto px-8 py-3 bg-white text-black rounded-lg text-xs md:text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all shadow-xl"
-                >
-                  <Save size={18} /> Persist Config
-                </button>
-              </div>
+               <div className="space-y-8">
+                   <div className="flex items-center justify-between">
+                     <h2 className="text-2xl font-serif italic text-white/90">Global Registry</h2>
+                     <div className="px-3 py-1 bg-red-600/10 border border-red-500/20 rounded-full text-[8px] font-black uppercase tracking-widest text-red-500">Live Config</div>
+                   </div>
 
-              <div className="space-y-6">
-                <h2 className="text-xl md:text-2xl font-serif italic uppercase text-white">Current Config</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {settings.map(s => (
-                    <div key={s.setting_key} className="p-4 md:p-6 bg-[#0D0D0E] border border-white/5 rounded-xl group relative overflow-hidden shadow-sm">
-                      <div className="relative z-10">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Key</p>
-                        <h4 className="font-mono text-xs md:text-sm text-red-500 truncate">{s.setting_key}</h4>
-                        <p className="text-[10px] text-white/20 mt-2">v{new Date(s.updated_at).getTime()}</p>
-                      </div>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-green-500/10 text-green-500 rounded text-[10px] font-bold uppercase hidden md:block">
-                        Active
-                      </div>
-                    </div>
-                  ))}
+                   {/* Registry Groups */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       {/* Group 1: TMDB */}
+                       <div className="bg-[#0D0D0E] border border-white/5 rounded-3xl p-6 space-y-6 shadow-sm">
+                           <div className="flex items-center gap-2 border-b border-white/5 pb-4">
+                               <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20 text-blue-500">
+                                   <Settings size={18} />
+                               </div>
+                               <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40">API Credentials</h4>
+                           </div>
+                           <div className="space-y-4">
+                               <div className="space-y-2">
+                                   <label className="text-[8px] font-black uppercase tracking-widest text-white/20">TMDB API Key</label>
+                                   <div className="flex gap-2">
+                                       <input 
+                                           id="config-TMDB_API_KEY"
+                                           placeholder="TMDB API Key"
+                                           className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:border-red-600 focus:outline-none"
+                                       />
+                                       <button 
+                                           onClick={() => handleSaveConfig('TMDB_API_KEY', (document.getElementById('config-TMDB_API_KEY') as any).value)}
+                                           className="px-6 bg-white text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-xl"
+                                       >Save</button>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+
+                       {/* Group 2: Operations */}
+                       <div className="bg-[#0D0D0E] border border-white/5 rounded-3xl p-6 space-y-6 shadow-sm">
+                           <div className="flex items-center gap-2 border-b border-white/5 pb-4">
+                               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-500">
+                                   <Rocket size={18} />
+                               </div>
+                               <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40">Operational Logic</h4>
+                           </div>
+                           <div className="space-y-4">
+                               <div className="space-y-2">
+                                   <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Allow Downloads</label>
+                                   <div className="flex gap-2">
+                                       <select 
+                                           id="config-allow_downloads"
+                                           className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:border-red-600 focus:outline-none"
+                                       >
+                                           <option value="true">Enable Protocol</option>
+                                           <option value="false">Disable Protocol</option>
+                                       </select>
+                                       <button 
+                                           onClick={() => handleSaveConfig('allow_downloads', (document.getElementById('config-allow_downloads') as any).value)}
+                                           className="px-6 bg-white text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-xl"
+                                       >Save</button>
+                                   </div>
+                               </div>
+                               <div className="space-y-2">
+                                   <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Payment Notice</label>
+                                   <div className="flex gap-2">
+                                       <textarea 
+                                           id="config-payment_info"
+                                           placeholder="Payment Instructions"
+                                           className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:border-red-600 focus:outline-none min-h-[100px]"
+                                       />
+                                       <button 
+                                           onClick={() => handleSaveConfig('payment_info', (document.getElementById('config-payment_info') as any).value)}
+                                           className="px-6 bg-white text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-xl self-end"
+                                       >Save</button>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+
+                       {/* Group 3: Pricing (Full Width) */}
+                       <div className="md:col-span-2 bg-[#0D0D0E] border border-white/5 rounded-3xl p-6 space-y-6 shadow-sm">
+                           <div className="flex items-center gap-2 border-b border-white/5 pb-4">
+                               <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20 text-orange-500">
+                                   <DollarSign size={18} />
+                               </div>
+                               <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40">Tier Economics (Premium Plans)</h4>
+                           </div>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                               <div className="space-y-4">
+                                   <p className="text-[8px] font-black text-red-500 uppercase tracking-widest">Naira Thresholds</p>
+                                   <div className="space-y-4">
+                                       <div className="flex gap-2 items-end">
+                                           <div className="flex-1 space-y-2">
+                                               <label className="text-[7px] font-black text-white/20 uppercase tracking-widest">Monthly (₦)</label>
+                                               <input id="config-premium_price_naira_monthly" placeholder="1500" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white" />
+                                           </div>
+                                           <button 
+                                               onClick={() => handleSaveConfig('premium_price_naira_monthly', (document.getElementById('config-premium_price_naira_monthly') as any).value)}
+                                               className="py-3 px-6 bg-white/5 hover:bg-red-600 hover:text-white border border-white/10 rounded-xl text-[10px] font-black transition-all text-white"
+                                           >Set</button>
+                                       </div>
+                                       <div className="flex gap-2 items-end">
+                                           <div className="flex-1 space-y-2">
+                                               <label className="text-[7px] font-black text-white/20 uppercase tracking-widest">Yearly (₦)</label>
+                                               <input id="config-premium_price_naira_yearly" placeholder="15000" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white" />
+                                           </div>
+                                           <button 
+                                               onClick={() => handleSaveConfig('premium_price_naira_yearly', (document.getElementById('config-premium_price_naira_yearly') as any).value)}
+                                               className="py-3 px-6 bg-white/5 hover:bg-red-600 hover:text-white border border-white/10 rounded-xl text-[10px] font-black transition-all text-white"
+                                           >Set</button>
+                                       </div>
+                                       <div className="flex gap-2 items-end">
+                                           <div className="flex-1 space-y-2">
+                                               <label className="text-[7px] font-black text-white/20 uppercase tracking-widest">Affiliate Pay (₦)</label>
+                                               <input id="config-affiliate_commission_naira" placeholder="100" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white" />
+                                           </div>
+                                           <button 
+                                               onClick={() => handleSaveConfig('affiliate_commission_naira', (document.getElementById('config-affiliate_commission_naira') as any).value)}
+                                               className="py-3 px-6 bg-white/5 hover:bg-red-600 hover:text-white border border-white/10 rounded-xl text-[10px] font-black transition-all text-white"
+                                           >Set</button>
+                                       </div>
+                                   </div>
+                               </div>
+                               <div className="space-y-4">
+                                   <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Dollar Thresholds</p>
+                                   <div className="space-y-4">
+                                       <div className="flex gap-2 items-end">
+                                           <div className="flex-1 space-y-2">
+                                               <label className="text-[7px] font-black text-white/20 uppercase tracking-widest">Monthly ($)</label>
+                                               <input id="config-premium_price_dollar_monthly" placeholder="9.99" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white" />
+                                           </div>
+                                           <button 
+                                               onClick={() => handleSaveConfig('premium_price_dollar_monthly', (document.getElementById('config-premium_price_dollar_monthly') as any).value)}
+                                               className="py-3 px-6 bg-white/5 hover:bg-red-600 hover:text-white border border-white/10 rounded-xl text-[10px] font-black transition-all text-white"
+                                           >Set</button>
+                                       </div>
+                                       <div className="flex gap-2 items-end">
+                                           <div className="flex-1 space-y-2">
+                                               <label className="text-[7px] font-black text-white/20 uppercase tracking-widest">Yearly ($)</label>
+                                               <input id="config-premium_price_dollar_yearly" placeholder="99.99" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white" />
+                                           </div>
+                                           <button 
+                                               onClick={() => handleSaveConfig('premium_price_dollar_yearly', (document.getElementById('config-premium_price_dollar_yearly') as any).value)}
+                                               className="py-3 px-6 bg-white/5 hover:bg-red-600 hover:text-white border border-white/10 rounded-xl text-[10px] font-black transition-all text-white"
+                                           >Set</button>
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   </div>
+
+                   <div className="bg-[#161618] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+                     <div className="px-6 py-4 bg-white/[0.02] border-b border-white/5 flex items-center gap-2">
+                       <ExternalLink size={14} className="text-white/20" />
+                       <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40">Active Configuration Signals</h4>
+                     </div>
+                     <div className="divide-y divide-white/[0.02]">
+                       {settings.length === 0 ? (
+                         <div className="p-8 text-center text-[10px] font-black uppercase tracking-[0.3em] text-white/10">Zero configs deployed.</div>
+                       ) : (
+                         settings.map((s: any) => (
+                           <div key={s.setting_key} className="p-4 hover:bg-white/[0.01] transition-all flex flex-col md:flex-row justify-between md:items-center group gap-4">
+                             <div>
+                               <p className="text-[9px] font-black text-red-500 uppercase tracking-widest mb-1">{s.setting_key}</p>
+                               <p className="text-xs text-white/60 font-mono truncate max-w-sm">{s.setting_value}</p>
+                             </div>
+                             <div className="flex items-center gap-3">
+                                <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">{new Date(s.updated_at).toLocaleDateString()}</p>
+                                <button
+                                    onClick={() => {
+                                        const newValue = prompt(`Edit ${s.setting_key}`, s.setting_value);
+                                        if (newValue !== null) handleSaveConfig(s.setting_key, newValue);
+                                    }}
+                                    className="px-4 py-2 bg-white/5 hover:bg-white text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all font-sans"
+                                >Edit Signal</button>
+                             </div>
+                           </div>
+                         ))
+                       )}
+                     </div>
+                   </div>
                 </div>
-              </div>
             </div>
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedNotification && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl">
+             <motion.div 
+               initial={{ opacity: 0, scale: 0.95 }}
+               animate={{ opacity: 1, scale: 1 }}
+               exit={{ opacity: 0, scale: 0.95 }}
+               className="max-w-xl w-full bg-[#121214] border border-white/5 rounded-[2.5rem] p-8 md:p-12 space-y-8 shadow-2xl relative"
+             >
+                <button onClick={() => setSelectedNotification(null)} className="absolute top-6 right-6 p-2 hover:bg-white/5 rounded-full text-white/20 hover:text-white transition-colors">
+                  <X size={24} />
+                </button>
+                <div className="space-y-4">
+                   <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                        selectedNotification.type === 'success' ? 'bg-emerald-500/10 text-emerald-500' :
+                        selectedNotification.type === 'error' ? 'bg-red-500/10 text-red-500' :
+                        'bg-blue-500/10 text-blue-500'
+                      }`}>
+                        {selectedNotification.type.toUpperCase()} SIGNAL
+                      </span>
+                      <p className="text-[10px] text-white/20 font-black uppercase tracking-widest">
+                         {new Date(selectedNotification.created_at).toLocaleString()}
+                      </p>
+                   </div>
+                   <h2 className="text-3xl font-serif italic text-white leading-tight">{selectedNotification.title}</h2>
+                </div>
+                <div className="w-full h-px bg-white/5" />
+                <p className="text-base text-white/60 leading-relaxed font-medium whitespace-pre-wrap">
+                   {selectedNotification.message}
+                </p>
+                <button 
+                  onClick={() => setSelectedNotification(null)}
+                  className="w-full py-5 bg-white text-black hover:bg-red-600 hover:text-white transition-all font-black uppercase tracking-[0.4em] text-[11px] rounded-[1.5rem] shadow-xl"
+                >
+                  Terminate View
+                </button>
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

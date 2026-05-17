@@ -39,7 +39,6 @@ import { NotificationBell } from './components/NotificationBell';
 import { AdPlacement } from './components/AdPlacement';
 import { CheckoutPage } from './components/CheckoutPage';
 import { AffiliateDashboard } from './components/AffiliateDashboard';
-import { GoogleGenAI } from "@google/genai";
 
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 const BACKDROP_BASE = "https://image.tmdb.org/t/p/original";
@@ -174,15 +173,30 @@ export default function App() {
   };
 
   const checkDbStatus = async () => {
+    let baseUrl = '';
     try {
       const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
-      let baseUrl = envUrl;
+      baseUrl = envUrl;
       
-      if (!baseUrl && typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
-        baseUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        const isVercel = hostname.includes('vercel.app');
+        const isAIStudio = hostname.includes('run.app') || hostname.includes('google.com');
+
+        if (isVercel) {
+          baseUrl = envUrl || 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
+        } else if (isAIStudio) {
+          baseUrl = '';
+        } else if (baseUrl && baseUrl.includes('run.app')) {
+          baseUrl = '';
+        }
       }
 
-      const res = await fetch(`${baseUrl}/api/health`);
+      const res = await fetch(`${baseUrl}/api/health`, {
+        headers: {
+           'Accept': 'application/json'
+        }
+      });
       const data = await res.json();
       setDbStatus(data.dbConnected);
       if (!data.dbConnected) {
@@ -190,39 +204,19 @@ export default function App() {
       }
     } catch (err) {
       setDbStatus(false);
-      setDbErrorMessage("Could not contact system backend. Please verify server is alive.");
+      setDbErrorMessage(`Could not contact system backend (${baseUrl}/api/health). Please verify server is alive.`);
     }
   };
 
   const fetchRecs = async () => {
     try {
-      const history = await movieApi.getHistory();
-      if (!Array.isArray(history) || history.length === 0) {
+      const recommendedTitles = await movieApi.getRecommendations();
+      
+      if (!recommendedTitles || recommendedTitles.length === 0) {
         const trendingRes = await movieApi.getTrending();
         setRecs(trendingRes?.results?.slice(0, 5) || []);
         return;
       }
-
-      const titles = history.map(h => h.title).join(", ");
-      const apiKey = (process.env as any).GEMINI_API_KEY;
-
-      if (!apiKey) {
-        const trendingRes = await movieApi.getTrending();
-        setRecs(trendingRes.results.slice(0, 5));
-        return;
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-      const prompt = `Based on these movies/TV shows: ${titles}, recommend 5 similar popular titles. 
-      Return ONLY a JSON array of strings (the titles). No markdown, no explanation.`;
-
-      const result = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt
-      });
-
-      const responseText = result.text || "[]";
-      const recommendedTitles = JSON.parse(responseText.replace(/```json|```/g, "").trim());
 
       const movieDetails = await Promise.all(
         recommendedTitles.map(async (title: string) => {
@@ -238,8 +232,10 @@ export default function App() {
       setRecs(movieDetails.filter(m => m !== null));
     } catch (err) {
       console.error("Recs error:", err);
-      const trendingRes = await movieApi.getTrending();
-      setRecs(trendingRes.results.slice(0, 5));
+      try {
+        const trendingRes = await movieApi.getTrending();
+        setRecs(trendingRes.results.slice(0, 5));
+      } catch (e) {}
     }
   };
 
@@ -410,7 +406,11 @@ export default function App() {
           className="max-w-md w-full space-y-12 text-center"
         >
           <div className="space-y-4">
-            <div className="w-16 h-16 bg-red-600 rounded-lg flex items-center justify-center mx-auto text-3xl font-bold text-white shadow-2xl shadow-red-600/40">C</div>
+            <div className="w-16 h-16 bg-red-600 rounded-lg flex items-center justify-center mx-auto text-3xl font-bold text-white shadow-2xl shadow-red-600/40">
+              <svg viewBox="0 0 24 24" fill="none" className="w-10 h-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
             <h1 className="text-5xl font-serif italic font-light tracking-tighter uppercase">Cinode</h1>
           </div>
           
@@ -514,7 +514,6 @@ export default function App() {
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="flex flex-col gap-6 items-center">
-          <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-red-600/20">C</div>
           <div className="space-y-5 flex flex-col items-center">
             <NavIcon active={activeTab === 'home'} onClick={() => { setActiveTab('home'); setIsSidebarOpen(false); }} icon={<Home size={20} />} />
             <NavIcon active={activeTab === 'search'} onClick={() => { setActiveTab('search'); setIsSidebarOpen(false); }} icon={<Search size={20} />} />
@@ -543,25 +542,26 @@ export default function App() {
             <button onClick={handleLogout} className="text-white/40 hover:text-red-600 transition-colors">
                 <LogOut size={20} />
             </button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-400 to-pink-500 shadow-lg"></div>
         </div>
       </nav>
 
       {/* Main Content Area */}
       <main className={`flex-1 flex flex-col overflow-y-auto no-scrollbar relative transition-opacity duration-300 ${isSidebarOpen ? 'opacity-20 pointer-events-none md:opacity-100 md:pointer-events-auto' : 'opacity-100'}`}>
-        {/* HUD Layer - Purely transparent floating icons anchored to viewport */}
-        <div className="fixed top-0 right-0 p-6 md:p-12 flex items-center gap-6 z-[60] pointer-events-none">
-            <div className="flex items-center gap-4 md:gap-6 pointer-events-auto">
-                <button 
-                    onClick={() => setActiveTab('search')}
-                    className="p-2 text-white/40 hover:text-white transition-all group"
-                    title="Search Library"
-                >
-                    <Search size={22} className="group-hover:scale-110 transition-transform" />
-                </button>
-                <NotificationBell />
-            </div>
-        </div>
+        {/* HUD Layer - Purely transparent floating icons anchored to viewport - Hidden on Movie Details */}
+        {!selectedMovie && !playingMovie && activeTab !== 'admin' && (
+          <div className="fixed top-0 right-0 p-6 md:p-12 flex items-center gap-6 z-[60] pointer-events-none">
+              <div className="flex items-center gap-4 md:gap-6 pointer-events-auto">
+                  <button 
+                      onClick={() => setActiveTab('search')}
+                      className="p-2 text-white/40 hover:text-white transition-all group"
+                      title="Search Library"
+                  >
+                      <Search size={22} className="group-hover:scale-110 transition-transform" />
+                  </button>
+                  <NotificationBell />
+              </div>
+          </div>
+        )}
 
         {!dbStatus && (
             <div className="bg-red-600/10 border-b border-red-600/20 px-12 py-2 flex items-center justify-between">
@@ -1164,6 +1164,7 @@ export default function App() {
                     <div className="max-h-[85vh] overflow-y-auto no-scrollbar">
                         <CheckoutPage 
                             user={{ email: user! }} 
+                            publicSettings={publicSettings}
                             onSuccess={() => {
                                 setShowCheckout(false);
                                 checkAdminStatus();
@@ -1302,7 +1303,7 @@ function NavIcon({ active, onClick, icon }: any) {
       className={`p-3 rounded-xl transition-all duration-300 relative group ${active ? 'bg-red-600 text-white shadow-lg shadow-red-600/40 scale-110' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
     >
       {icon}
-      {active && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-red-600 blur-xl opacity-20 -z-10" />}
+      {active && <motion.div layoutId="nav-glow" className="absolute inset-x-0 -left-4 w-1 bg-red-600 h-8 top-1/2 -translate-y-1/2 rounded-r-full shadow-[0_0_15px_rgba(220,38,38,0.5)]" />}
     </button>
   );
 }

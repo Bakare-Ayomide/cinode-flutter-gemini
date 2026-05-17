@@ -163,16 +163,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           trailing: PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white54),
             onSelected: (val) => _handleUserAction(user['email'], val, user['is_admin'] == 1),
+            color: const Color(0xFF161618),
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'grant_2w', child: Text('Grant 2 Weeks Premium')),
-              const PopupMenuItem(value: 'grant_1m', child: Text('Grant 1 Month Premium')),
-              const PopupMenuItem(value: 'grant_3m', child: Text('Grant 3 Months Premium')),
-              const PopupMenuItem(value: 'grant_6m', child: Text('Grant 6 Months Premium')),
-              const PopupMenuItem(value: 'grant_1y', child: Text('Grant 1 Year Premium')),
-              const PopupMenuDivider(),
+              const PopupMenuItem(value: 'grant_2w', child: Text('Grant 2 Weeks Premium', style: TextStyle(color: Colors.redAccent))),
+              const PopupMenuItem(value: 'grant_1m', child: Text('Grant 1 Month Premium', style: TextStyle(color: Colors.redAccent))),
+              const PopupMenuItem(value: 'grant_3m', child: Text('Grant 3 Months Premium', style: TextStyle(color: Colors.redAccent))),
+              const PopupMenuItem(value: 'grant_6m', child: Text('Grant 6 Months Premium', style: TextStyle(color: Colors.redAccent))),
+              const PopupMenuItem(value: 'grant_1y', child: Text('Grant 1 Year Premium', style: TextStyle(color: Colors.redAccent))),
+              const PopupMenuDivider(height: 1),
               if (user['is_premium'] == 1)
-                const PopupMenuItem(value: 'revoke', child: Text('Discontinue Premium', style: TextStyle(color: Colors.orange))),
-              PopupMenuItem(value: 'toggle_admin', child: Text(user['is_admin'] == 1 ? 'Demote Admin' : 'Promote Admin')),
+                const PopupMenuItem(value: 'revoke', child: Text('Revoke Premium', style: TextStyle(color: Colors.redAccent))),
+              PopupMenuItem(value: 'toggle_admin', child: const Text('Toggle Admin Status')),
               const PopupMenuItem(value: 'delete', child: Text('Delete User', style: TextStyle(color: Colors.red))),
             ],
           ),
@@ -563,4 +564,129 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  Widget _buildOverrideItem(Map<String, dynamic> ov) {
+    return ListTile(
+      title: Text(ov['title'] ?? 'TMDB: ${ov['tmdb_id']}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+      subtitle: Text(ov['video_url'], style: const TextStyle(color: Colors.white24, fontSize: 9), maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(icon: const Icon(Icons.copy, size: 16, color: Colors.white24), onPressed: () => _duplicateOverride(ov)),
+          IconButton(icon: const Icon(Icons.edit, size: 16, color: Colors.blueGrey), onPressed: () => _editOverride(ov)),
+          IconButton(icon: const Icon(Icons.delete, size: 16, color: Colors.redAccent), onPressed: () => _handleDeleteOverride(ov['id'])),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleDeleteOverride(int id) async {
+    await ApiService().adminDeleteOverride("contactzerolord@gmail.com", id);
+    _fetchData();
+  }
+
+  Widget _buildStatCard(String label, String value, {Color color = Colors.white}) {
+    return Container(
+      width: 180,
+      padding: const EdgeInsets.all(25),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161618),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          const SizedBox(height: 10),
+          Text(value, style: GoogleFonts.manrope(fontSize: 24, fontWeight: FontWeight.w900, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'GLOBAL REGISTRY',
+          style: GoogleFonts.manrope(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold, color: Colors.white24),
+        ),
+        const SizedBox(height: 20),
+        _buildConfigSection('CURRENCY & PRICING', [
+          _buildConfigItem('MONTHLY PRICE (NGN)', '₦1,500', 'premium_price_naira_monthly'),
+          _buildConfigItem('YEARLY PRICE (NGN)', '₦15,000', 'premium_price_naira_yearly'),
+          _buildConfigItem('MONTHLY PRICE (USD)', '$9.99', 'premium_price_usd_monthly'),
+          _buildConfigItem('YEARLY PRICE (USD)', '$99.99', 'premium_price_usd_yearly'),
+        ]),
+        const SizedBox(height: 20),
+        _buildConfigSection('PAYMENT GATEWAY', [
+          _buildConfigItem('BANK NAME', 'MONIEPOINT', 'bank_name'),
+          _buildConfigItem('ACCOUNT NAME', 'CINODE MEDIA', 'account_name'),
+          _buildConfigItem('ACCOUNT NUMBER', '1234567890', 'account_number'),
+        ]),
+      ],
+    );
+  }
+
+  Widget _buildConfigSection(String title, List<Widget> items) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF161618),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text(title, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.redAccent, letterSpacing: 1)),
+          ),
+          const Divider(color: Colors.white10, height: 1),
+          ...items,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfigItem(String label, String value, String key) {
+    return ListTile(
+      title: Text(label, style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold)),
+      subtitle: Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+      trailing: IconButton(
+        icon: const Icon(Icons.edit, size: 16, color: Colors.white24),
+        onPressed: () => _showConfigEditDialog(label, value, key),
+      ),
+    );
+  }
+
+  void _showConfigEditDialog(String label, String value, String key) {
+    final controller = TextEditingController(text: value.replaceAll('₦', '').replaceAll('$', ''));
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0D0D0E),
+        title: Text('EDIT $label', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () async {
+                await ApiService().saveSystemSetting("contactzerolord@gmail.com", key, controller.text);
+                Navigator.pop(context);
+                _fetchData();
+            }, 
+            child: const Text('SAVE', style: TextStyle(color: Colors.redAccent))
+          ),
+        ],
+      ),
+    );
+  }
 }
