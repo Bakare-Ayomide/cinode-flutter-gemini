@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cinode</string>
+    <string name="title_activity_main">Cinode</string>
+    <string name="package_name">com.cinode.app</string>
+    <string name="custom_url_scheme">com.cinode.app</string>
+</resources>
