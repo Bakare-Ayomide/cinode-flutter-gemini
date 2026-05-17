@@ -29,9 +29,6 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Generate Capacitor Assets (icons + splash)
-        run: npx capacitor-assets generate
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -46,12 +43,12 @@ jobs:
           cd android
           ./gradlew assembleRelease
 
-      - name: Rename APK to Cinode.apk
+      - name: Rename APK
         run: |
           mkdir -p release
           cp android/app/build/outputs/apk/release/app-release.apk release/Cinode.apk
 
-      - name: Upload Cinode APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Cinode
