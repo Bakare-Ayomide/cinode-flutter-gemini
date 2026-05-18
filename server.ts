@@ -622,15 +622,17 @@ app.get("/api/movies/details/:type/:id", async (req, res) => {
             );
             if (localRows.length > 0) {
                 const local = localRows[0];
+                const videoUrl = `/api/local-stream?path=${encodeURIComponent(local.file_path)}`;
+                
                 if (!data.videos) data.videos = { results: [] };
                 data.videos.results.unshift({
-                    key: local.file_path.startsWith('/') ? local.file_path : `/${local.file_path}`,
+                    key: videoUrl,
                     name: "Local Archive",
                     site: "Cinode Library",
                     type: "Local",
                     is_local: true 
                 });
-                if (!data.override_url) data.override_url = local.file_path.startsWith('/') ? local.file_path : `/${local.file_path}`;
+                if (!data.override_url) data.override_url = videoUrl;
             }
         }
     } catch (err: any) {
@@ -667,7 +669,7 @@ app.get("/api/tv/:id/season/:season_number", async (req, res) => {
                 // Local Library (Lower priority)
                 const local = locals.find((l: any) => l.episode_number === episode.episode_number);
                 if (local) {
-                    currentEp.video_url = local.file_path.startsWith('/') ? local.file_path : `/${local.file_path}`;
+                    currentEp.video_url = `/api/local-stream?path=${encodeURIComponent(local.file_path)}`;
                     currentEp.is_local = true;
                 }
 
@@ -1861,8 +1863,24 @@ app.get("/api/admin/local-library", ensureDB, adminOnly, async (req, res) => {
     }
 });
 
+app.post("/api/admin/local-library/update", ensureDB, adminOnly, async (req, res) => {
+    const { id, tmdb_id } = req.body;
+    try {
+        await pool.execute('UPDATE local_library SET tmdb_id = ? WHERE id = ?', [tmdb_id || null, id]);
+        res.json({ success: true });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get("/api/admin/browse", ensureDB, adminOnly, async (req, res) => {
-    const rootPath = req.query.path as string || process.cwd();
+    let rootPath = req.query.path as string;
+    
+    // Default to / if no path is provided, or use process.cwd() as fallback
+    if (!rootPath) {
+        rootPath = '/';
+    }
+
     try {
         const items = await fs.readdir(rootPath);
         const details = await Promise.all(items.map(async (item) => {
@@ -1880,9 +1898,57 @@ app.get("/api/admin/browse", ensureDB, adminOnly, async (req, res) => {
                 size: stats.size
             };
         }));
-        res.json(details.filter(d => d !== null));
+        // Sort: directories first, then alphabetical
+        const result = details.filter(d => d !== null).sort((a: any, b: any) => {
+            if (a.is_dir === b.is_dir) return a.name.localeCompare(b.name);
+            return a.is_dir ? -1 : 1;
+        });
+        res.json(result);
     } catch (err: any) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: `Directory access failed: ${err.message}` });
+    }
+});
+
+// Stream local files from any directory (admin/proxy)
+app.get("/api/local-stream", async (req, res) => {
+    const filePath = req.query.path as string;
+    if (!filePath) return res.status(400).send("Path required");
+
+    try {
+        // Basic safety check: ensure the file exists and is indeed a video file
+        const stats = await fs.stat(filePath);
+        if (stats.isDirectory()) return res.status(400).send("Path is a directory");
+
+        const ext = path.extname(filePath).toLowerCase();
+        if (!['.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v'].includes(ext)) {
+            return res.status(403).send("File type not allowed");
+        }
+
+        const range = req.headers.range;
+        if (range) {
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
+            const chunksize = (end - start) + 1;
+            const file = fsSync.createReadStream(filePath, { start, end });
+            const head = {
+                'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': chunksize,
+                'Content-Type': 'video/mp4', // Browser is usually okay with mp4 even if it's mkv sometimes
+            };
+            res.writeHead(206, head);
+            file.pipe(res);
+        } else {
+            const head = {
+                'Content-Length': stats.size,
+                'Content-Type': 'video/mp4',
+            };
+            res.writeHead(200, head);
+            fsSync.createReadStream(filePath).pipe(res);
+        }
+    } catch (e: any) {
+        res.status(404).send("File not found");
     }
 });
 
@@ -1907,9 +1973,9 @@ app.post("/api/admin/local-library/scan", ensureDB, adminOnly, async (req, res) 
                     if (!['.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v'].includes(ext)) continue;
 
                     const titleKeyword = path.parse(item).name;
-                    const relativePath = path.relative(process.cwd(), fullPath);
+                    const finalPath = fullPath; // Store full absolute path for local files
 
-                    const [existing]: any = await pool.execute('SELECT id, tmdb_id FROM local_library WHERE file_path = ?', [relativePath]);
+                    const [existing]: any = await pool.execute('SELECT id, tmdb_id FROM local_library WHERE file_path = ?', [finalPath]);
                     let tmdbId = existing.length > 0 ? existing[0].tmdb_id : null;
                     
                     if (!tmdbId) {
@@ -1919,7 +1985,7 @@ app.post("/api/admin/local-library/scan", ensureDB, adminOnly, async (req, res) 
 
                     await pool.execute(
                         'INSERT IGNORE INTO local_library (tmdb_id, media_type, file_path, title_keyword) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE tmdb_id = VALUES(tmdb_id)',
-                        [tmdbId ? String(tmdbId) : null, 'movie', relativePath, titleKeyword]
+                        [tmdbId ? String(tmdbId) : null, 'movie', finalPath, titleKeyword]
                     );
                     scannedCount++;
                 }
@@ -1958,7 +2024,7 @@ app.post("/api/admin/local-library/scan", ensureDB, adminOnly, async (req, res) 
                         const ext = path.extname(episodeFile).toLowerCase();
                         if (!['.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v'].includes(ext)) continue;
 
-                        const relativePath = path.relative(process.cwd(), fullPath);
+                        const finalPath = fullPath;
                         const titleKeyword = path.parse(episodeFile).name;
                         
                         const matchEp = episodeFile.match(/Episode\s*(\d+)/i) || episodeFile.match(/E(\d+)/i) || episodeFile.match(/_(\d+)/) || episodeFile.match(/(\d+)/);
@@ -1966,7 +2032,7 @@ app.post("/api/admin/local-library/scan", ensureDB, adminOnly, async (req, res) 
 
                         await pool.execute(
                             'INSERT IGNORE INTO local_library (tmdb_id, media_type, season_number, episode_number, file_path, title_keyword) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE tmdb_id = VALUES(tmdb_id)',
-                            [showTmdbId ? String(showTmdbId) : null, 'tv', seasonNumber, episodeNumber, relativePath, showName]
+                            [showTmdbId ? String(showTmdbId) : null, 'tv', seasonNumber, episodeNumber, finalPath, showName]
                         );
                         scannedCount++;
                     }
@@ -2043,25 +2109,48 @@ app.get("/api/recommendations", ensureDB, async (req, res) => {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) return res.json([]);
 
-        const ai = new GoogleGenAI({
-          apiKey: apiKey,
-          httpOptions: {
-            headers: {
-              'User-Agent': 'aistudio-build',
+        let recommendations: string[] = [];
+        try {
+            const ai = new GoogleGenAI({
+              apiKey: apiKey,
+              httpOptions: {
+                headers: {
+                  'User-Agent': 'aistudio-build',
+                }
+              }
+            });
+            
+            const response = await ai.models.generateContent({
+                model: "gemini-3-flash-preview",
+                contents: `Based on these movies/TV shows: ${titles}, recommend 5 similar popular titles. Return ONLY a JSON array of strings (the titles). No markdown, no explanation.`
+            });
+
+            const responseText = response.text || "[]";
+            const cleaned = responseText.replace(/```json|```/g, "").trim();
+            recommendations = JSON.parse(cleaned);
+        } catch (aiErr: any) {
+            console.error("AI Recommendation failed or quota exceeded, falling back to TMDB:", aiErr.message);
+            // Fallback: Use TMDB recommendations
+            const historyToUse = history.slice(0, 3);
+            for (const item of historyToUse) {
+                try {
+                    const tmdbRecs = await tmdbFetch(`/search/multi`, { query: item.title });
+                    if (tmdbRecs.results && tmdbRecs.results.length > 0) {
+                        const firstMatch = tmdbRecs.results[0];
+                        const recs = await tmdbFetch(`/${firstMatch.media_type}/${firstMatch.id}/recommendations`, {});
+                        if (recs.results) {
+                            recommendations.push(...recs.results.slice(0, 3).map((r: any) => r.title || r.name));
+                        }
+                    }
+                } catch (tmdbErr) {
+                    // Ignore individual TMDB failures
+                }
             }
-          }
-        });
-        
-        const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview",
-            contents: `Based on these movies/TV shows: ${titles}, recommend 5 similar popular titles. Return ONLY a JSON array of strings (the titles). No markdown, no explanation.`
-        });
+            // deduplicate and limit
+            recommendations = Array.from(new Set(recommendations)).slice(0, 5);
+        }
 
-        const responseText = response.text || "[]";
-        const cleaned = responseText.replace(/```json|```/g, "").trim();
-        const recommendedTitles = JSON.parse(cleaned);
-
-        res.json(recommendedTitles);
+        res.json(recommendations);
     } catch (err: any) {
         console.error("Recommendations failure:", err.message);
         res.json([]); // Fail gracefully

@@ -136,6 +136,7 @@ export const movieApi = {
   getPlaybackProgress: (type: string, id: number) => api.get(`/playback/progress/${type}/${id}`).then(res => res.data),
   savePlaybackProgress: (data: { movie_id: number | string, media_type: string, title?: string, poster_path?: string, progress_time: number, duration: number }) => api.post('/playback/progress', data).then(res => res.data),
   getAdminLocalLibrary: () => api.get('/admin/local-library').then(res => res.data),
+  updateLocalLibrary: (id: number | string, tmdb_id: string | null) => api.post('/admin/local-library/update', { id, tmdb_id }).then(res => res.data),
   browseDirectory: (path?: string) => api.get('/admin/browse', { params: { path } }).then(res => res.data),
   scanLocalLibrary: (moviePath: string, tvPath: string) => api.post('/admin/local-library/scan', { moviePath, tvPath }).then(res => res.data),
 };

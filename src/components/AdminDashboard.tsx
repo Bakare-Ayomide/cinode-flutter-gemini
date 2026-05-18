@@ -1640,10 +1640,16 @@ const AdminDashboard: React.FC = () => {
                                   <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-1 rounded">TMDB: {item.tmdb_id}</span>
                                 ) : (
                                   <button 
-                                    onClick={() => {
-                                      const id = prompt(`Enter TMDB ID for ${item.title_keyword}`);
-                                      if (id) {
-                                         // Extra logic to link could be added here
+                                    onClick={async () => {
+                                      const newTmdbId = prompt(`Enter TMDB ID for ${item.title_keyword}`, item.tmdb_id || '');
+                                      if (newTmdbId !== null) {
+                                         try {
+                                           await movieApi.updateLocalLibrary(item.id, newTmdbId);
+                                           showMsg('success', 'Linked successfully');
+                                           fetchData();
+                                         } catch (err) {
+                                           showMsg('error', 'Link failed');
+                                         }
                                       }
                                     }}
                                     className="text-[8px] font-black text-red-500 hover:text-white uppercase tracking-widest underline underline-offset-4"
@@ -1679,20 +1685,47 @@ const AdminDashboard: React.FC = () => {
                         </button>
                     </div>
 
+                    <div className="px-8 py-2 bg-black/20 border-b border-white/5 flex gap-2 overflow-x-auto no-scrollbar">
+                        {['/', '/home', '/mnt', '/media', '/var/www'].map(root => (
+                            <button 
+                                key={root}
+                                onClick={() => navigateBrowser(root)}
+                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${browserPath === root || browserPath.startsWith(root) ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                            >
+                                {root === '/' ? 'Root' : root.split('/').pop()}
+                            </button>
+                        ))}
+                    </div>
+
                     <div className="px-8 py-4 bg-black/40 border-b border-white/5 flex items-center gap-3">
                         <button 
                             onClick={() => {
+                                if (browserPath === '/' || !browserPath) return;
                                 const parts = browserPath.split('/').filter(Boolean);
-                                parts.pop();
-                                navigateBrowser('/' + parts.join('/'));
+                                if (parts.length === 0) {
+                                    navigateBrowser('/');
+                                } else {
+                                    parts.pop();
+                                    navigateBrowser('/' + parts.join('/'));
+                                }
                             }}
                             className="p-2 hover:bg-white/5 rounded-lg transition-all text-white/40"
                             disabled={browserPath === '/' || !browserPath}
                         >
                             <ChevronLeft size={20} />
                         </button>
-                        <div className="flex-1 bg-white/5 rounded-xl px-4 py-2 text-xs text-white/60 font-mono truncate">
-                            {browserPath || '/'}
+                        <div className="flex-1 flex gap-2">
+                           <input 
+                             type="text"
+                             value={browserPath}
+                             onChange={(e) => setBrowserPath(e.target.value)}
+                             onKeyDown={(e) => e.key === 'Enter' && navigateBrowser(browserPath)}
+                             className="flex-1 bg-white/5 rounded-xl px-4 py-2 text-xs text-white/60 font-mono outline-none focus:border-red-600 border border-transparent transition-all"
+                           />
+                           <button 
+                             onClick={() => navigateBrowser(browserPath)}
+                             className="px-4 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                           >GO</button>
                         </div>
                     </div>
 
