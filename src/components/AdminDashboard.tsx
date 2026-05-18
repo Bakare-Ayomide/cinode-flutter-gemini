@@ -26,7 +26,9 @@ import {
   Ban,
   CheckCircle2,
   Send,
-  ArrowUpRight
+  ArrowUpRight,
+  ChevronLeft,
+  Folder
 } from 'lucide-react';
 import { movieApi } from '../lib/api';
 import { motion, AnimatePresence } from 'motion/react';
@@ -49,8 +51,38 @@ const AdminDashboard: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'content' | 'archive' | 'settings' | 'payments' | 'payconfig' | 'affiliates' | 'ads' | 'notifications'>('stats');
   const [loading, setLoading] = useState(false);
+  const [movieScanPath, setMovieScanPath] = useState('');
+  const [tvScanPath, setTvScanPath] = useState('');
+  const [browserPath, setBrowserPath] = useState('');
+  const [browserItems, setBrowserItems] = useState<any[]>([]);
+  const [isBrowserOpen, setIsBrowserOpen] = useState(false);
+  const [browsingFor, setBrowsingFor] = useState<'movies' | 'tv' | null>(null);
   const [searchFilter, setSearchFilter] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<{id: number | string, email: string} | null>(null);
+  const openBrowser = async (type: 'movies' | 'tv') => {
+    setBrowsingFor(type);
+    setIsBrowserOpen(true);
+    try {
+      const initialPath = (type === 'movies' ? movieScanPath : tvScanPath) || '';
+      const data = await movieApi.browseDirectory(initialPath);
+      setBrowserItems(data);
+      setBrowserPath(initialPath || '/');
+    } catch (err) {
+      const data = await movieApi.browseDirectory('/');
+      setBrowserItems(data);
+      setBrowserPath('/');
+    }
+  };
+
+  const navigateBrowser = async (newPath: string) => {
+    try {
+      const data = await movieApi.browseDirectory(newPath);
+      setBrowserItems(data);
+      setBrowserPath(newPath);
+    } catch (err) {
+      showMsg('error', 'Could not open directory');
+    }
+  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [vaultTab, setVaultTab] = useState<'all' | 'movie' | 'tv' | 'episode'>('all');
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
@@ -1495,13 +1527,14 @@ const AdminDashboard: React.FC = () => {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div className="space-y-2">
                   <h2 className="text-3xl font-serif italic text-white tracking-tighter">Local Archive Shelf</h2>
-                  <p className="text-xs text-white/40 uppercase tracking-widest font-black italic">Manage and map files detected in your VPS uploads directory.</p>
+                  <p className="text-xs text-white/40 uppercase tracking-widest font-black italic">Manage and map files from any directory on your VPS.</p>
                 </div>
                 <button 
                   onClick={async () => {
+                    if (!movieScanPath && !tvScanPath) return showMsg('error', 'Select at least one path to scan');
                     setScanLoading(true);
                     try {
-                      const res = await movieApi.scanLocalLibrary();
+                      const res = await movieApi.scanLocalLibrary(movieScanPath, tvScanPath);
                       showMsg('success', `Scan Complete: ${res.scannedCount} items found, ${res.mappedCount} mapped automatically.`);
                       fetchData();
                     } catch (err) {
@@ -1522,18 +1555,58 @@ const AdminDashboard: React.FC = () => {
                 <div className="space-y-6">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Archive Protocol</h3>
                   <div className="bg-[#0D0D0E]/50 border border-white/5 rounded-[2rem] p-8 space-y-6">
-                    <p className="text-xs text-white/60 leading-relaxed italic font-medium">To populate your archive, organize your VPS files as follows:</p>
-                    <div className="space-y-4 font-mono text-[10px] text-red-400">
-                      <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5">
-                        <span className="text-white/20">/uploads/movies/</span>
-                        <span>Movie Title (Year).mp4</span>
-                      </div>
-                      <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5">
-                        <span className="text-white/20">/uploads/tv/</span>
-                        <span>Show Name/Season 1/Episode 1.mp4</span>
-                      </div>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Movies Directory Path</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    value={movieScanPath}
+                                    onChange={(e) => setMovieScanPath(e.target.value)}
+                                    placeholder="/home/user/movies"
+                                    className="flex-1 bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-red-600 outline-none"
+                                />
+                                <button 
+                                    onClick={() => openBrowser('movies')}
+                                    className="px-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all"
+                                >
+                                    <Folder size={16} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[9px] uppercase tracking-widest text-white/40 font-bold">TV Shows Directory Path</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    value={tvScanPath}
+                                    onChange={(e) => setTvScanPath(e.target.value)}
+                                    placeholder="/home/user/tv"
+                                    className="flex-1 bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-red-600 outline-none"
+                                />
+                                <button 
+                                    onClick={() => openBrowser('tv')}
+                                    className="px-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all"
+                                >
+                                    <Folder size={16} />
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <p className="text-[9px] text-white/20 uppercase tracking-[0.2em] font-black italic">Cinode will attempt to match metadata from TMDB base on directory and keywords.</p>
+
+                    <div className="pt-6 border-t border-white/5 space-y-4">
+                        <p className="text-xs text-white/60 leading-relaxed italic font-medium">Expected structure:</p>
+                        <div className="space-y-4 font-mono text-[10px] text-red-500">
+                          <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5">
+                            <span className="text-white/20">Movies:</span>
+                            <span>Movie (2024).mp4 OR Title/Title.mp4</span>
+                          </div>
+                          <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5">
+                            <span className="text-white/20">TV Shows:</span>
+                            <span>Show Name/Season 1/Episode 1.mp4</span>
+                          </div>
+                        </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1570,7 +1643,7 @@ const AdminDashboard: React.FC = () => {
                                     onClick={() => {
                                       const id = prompt(`Enter TMDB ID for ${item.title_keyword}`);
                                       if (id) {
-                                         // Logic to manually link if needed
+                                         // Extra logic to link could be added here
                                       }
                                     }}
                                     className="text-[8px] font-black text-red-500 hover:text-white uppercase tracking-widest underline underline-offset-4"
@@ -1583,6 +1656,85 @@ const AdminDashboard: React.FC = () => {
                    </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {isBrowserOpen && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-[#0A0A0B] border border-white/10 rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col h-[70vh]"
+                >
+                    <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                        <div className="space-y-1">
+                            <h3 className="text-xl font-serif italic text-white">Navigate Vault</h3>
+                            <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Select path for {browsingFor === 'movies' ? 'Movies Catalog' : 'TV Shows Catalog'}</p>
+                        </div>
+                        <button 
+                            onClick={() => setIsBrowserOpen(false)}
+                            className="p-3 hover:bg-white/5 rounded-full transition-all"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="px-8 py-4 bg-black/40 border-b border-white/5 flex items-center gap-3">
+                        <button 
+                            onClick={() => {
+                                const parts = browserPath.split('/').filter(Boolean);
+                                parts.pop();
+                                navigateBrowser('/' + parts.join('/'));
+                            }}
+                            className="p-2 hover:bg-white/5 rounded-lg transition-all text-white/40"
+                            disabled={browserPath === '/' || !browserPath}
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+                        <div className="flex-1 bg-white/5 rounded-xl px-4 py-2 text-xs text-white/60 font-mono truncate">
+                            {browserPath || '/'}
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto no-scrollbar p-4">
+                        <div className="grid grid-cols-1 gap-1">
+                            {browserItems.map((item) => (
+                                <button 
+                                    key={item.path}
+                                    onClick={() => item.is_dir ? navigateBrowser(item.path) : null}
+                                    className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-left ${item.is_dir ? 'hover:bg-white/5' : 'opacity-40 cursor-default'}`}
+                                >
+                                    <div className={`p-2 rounded-lg ${item.is_dir ? 'bg-red-500/10 text-red-500' : 'bg-white/5 text-white/20'}`}>
+                                        {item.is_dir ? <Folder size={18} fill="currentColor" fillOpacity={0.2} /> : <Database size={18} />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-white truncate">{item.name}</p>
+                                        <p className="text-[10px] text-white/20 uppercase tracking-widest font-black">{item.is_dir ? 'Directory' : 'File'}</p>
+                                    </div>
+                                    {item.is_dir && <ChevronRight size={16} className="text-white/10" />}
+                                </button>
+                            ))}
+                            {browserItems.length === 0 && (
+                                <div className="p-20 text-center text-white/20 uppercase tracking-widest font-black text-xs">
+                                    Empty Sector
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="p-8 border-t border-white/5 bg-white/[0.02]">
+                        <button 
+                            onClick={() => {
+                                if (browsingFor === 'movies') setMovieScanPath(browserPath);
+                                else setTvScanPath(browserPath);
+                                setIsBrowserOpen(false);
+                            }}
+                            className="w-full bg-white text-black font-black py-4 rounded-2xl uppercase tracking-[0.2em] text-[10px] hover:bg-red-600 hover:text-white transition-all shadow-xl shadow-white/5"
+                        >
+                            Select Current Path
+                        </button>
+                    </div>
+                </motion.div>
             </div>
           )}
 

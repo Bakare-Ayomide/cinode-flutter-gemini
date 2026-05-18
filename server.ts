@@ -1861,47 +1861,78 @@ app.get("/api/admin/local-library", ensureDB, adminOnly, async (req, res) => {
     }
 });
 
-app.post("/api/admin/local-library/scan", ensureDB, adminOnly, async (req, res) => {
+app.get("/api/admin/browse", ensureDB, adminOnly, async (req, res) => {
+    const rootPath = req.query.path as string || process.cwd();
     try {
-        const moviesDir = path.join(uploadDir, 'movies');
-        const tvDir = path.join(uploadDir, 'tv');
-        
+        const items = await fs.readdir(rootPath);
+        const details = await Promise.all(items.map(async (item) => {
+            const fullPath = path.join(rootPath, item);
+            let stats;
+            try {
+                stats = await fs.stat(fullPath);
+            } catch (e) {
+                return null;
+            }
+            return {
+                name: item,
+                path: fullPath,
+                is_dir: stats.isDirectory(),
+                size: stats.size
+            };
+        }));
+        res.json(details.filter(d => d !== null));
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post("/api/admin/local-library/scan", ensureDB, adminOnly, async (req, res) => {
+    const { moviePath, tvPath } = req.body;
+    try {
         let scannedCount = 0;
         let mappedCount = 0;
 
-        // Scan Movies
-        if (fsSync.existsSync(moviesDir)) {
-            const files = await fs.readdir(moviesDir);
-            for (const file of files) {
-                const stats = await fs.stat(path.join(moviesDir, file));
-                if (stats.isDirectory()) continue;
+        // Optimized Scan Movies
+        const scanMoviesRec = async (p: string) => {
+            if (!fsSync.existsSync(p)) return;
+            const items = await fs.readdir(p);
+            for (const item of items) {
+                const fullPath = path.join(p, item);
+                const stats = await fs.stat(fullPath);
                 
-                const filePath = `uploads/movies/${file}`;
-                const titleKeyword = path.parse(file).name;
-                
-                // Check if already in DB
-                const [existing]: any = await pool.execute('SELECT id, tmdb_id FROM local_library WHERE file_path = ?', [filePath]);
-                
-                let tmdbId = existing.length > 0 ? existing[0].tmdb_id : null;
-                
-                if (!tmdbId) {
-                    tmdbId = await findTmdbIdByTitle(titleKeyword, 'movie');
-                    if (tmdbId) mappedCount++;
+                if (stats.isDirectory()) {
+                    await scanMoviesRec(fullPath);
+                } else {
+                    const ext = path.extname(item).toLowerCase();
+                    if (!['.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v'].includes(ext)) continue;
+
+                    const titleKeyword = path.parse(item).name;
+                    const relativePath = path.relative(process.cwd(), fullPath);
+
+                    const [existing]: any = await pool.execute('SELECT id, tmdb_id FROM local_library WHERE file_path = ?', [relativePath]);
+                    let tmdbId = existing.length > 0 ? existing[0].tmdb_id : null;
+                    
+                    if (!tmdbId) {
+                        tmdbId = await findTmdbIdByTitle(titleKeyword, 'movie');
+                        if (tmdbId) mappedCount++;
+                    }
+
+                    await pool.execute(
+                        'INSERT IGNORE INTO local_library (tmdb_id, media_type, file_path, title_keyword) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE tmdb_id = VALUES(tmdb_id)',
+                        [tmdbId ? String(tmdbId) : null, 'movie', relativePath, titleKeyword]
+                    );
+                    scannedCount++;
                 }
-
-                await pool.execute(
-                    'INSERT IGNORE INTO local_library (tmdb_id, media_type, file_path, title_keyword) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE tmdb_id = VALUES(tmdb_id)',
-                    [tmdbId ? String(tmdbId) : null, 'movie', filePath, titleKeyword]
-                );
-                scannedCount++;
             }
-        }
+        };
 
-        // Scan TV
-        if (fsSync.existsSync(tvDir)) {
-            const shows = await fs.readdir(tvDir);
+        if (moviePath) await scanMoviesRec(moviePath);
+
+        // Optimized Scan TV
+        if (tvPath && fsSync.existsSync(tvPath)) {
+            const shows = await fs.readdir(tvPath);
             for (const showName of shows) {
-                const showPath = path.join(tvDir, showName);
+                const showPath = path.join(tvPath, showName);
                 const showStats = await fs.stat(showPath);
                 if (!showStats.isDirectory()) continue;
 
@@ -1911,6 +1942,7 @@ app.post("/api/admin/local-library/scan", ensureDB, adminOnly, async (req, res) 
                 const seasons = await fs.readdir(showPath);
                 for (const seasonName of seasons) {
                     const seasonPath = path.join(showPath, seasonName);
+                    if (!fsSync.existsSync(seasonPath)) continue;
                     const sStats = await fs.stat(seasonPath);
                     if (!sStats.isDirectory()) continue;
 
@@ -1919,15 +1951,22 @@ app.post("/api/admin/local-library/scan", ensureDB, adminOnly, async (req, res) 
 
                     const episodes = await fs.readdir(seasonPath);
                     for (const episodeFile of episodes) {
-                        const filePath = `uploads/tv/${showName}/${seasonName}/${episodeFile}`;
+                        const fullPath = path.join(seasonPath, episodeFile);
+                        const stats = await fs.stat(fullPath);
+                        if (stats.isDirectory()) continue;
+
+                        const ext = path.extname(episodeFile).toLowerCase();
+                        if (!['.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v'].includes(ext)) continue;
+
+                        const relativePath = path.relative(process.cwd(), fullPath);
                         const titleKeyword = path.parse(episodeFile).name;
                         
-                        const matchEp = episodeFile.match(/Episode\s*(\d+)/i) || episodeFile.match(/E(\d+)/i) || episodeFile.match(/_(\d+)/);
+                        const matchEp = episodeFile.match(/Episode\s*(\d+)/i) || episodeFile.match(/E(\d+)/i) || episodeFile.match(/_(\d+)/) || episodeFile.match(/(\d+)/);
                         const episodeNumber = matchEp ? parseInt(matchEp[1]) : 1;
 
                         await pool.execute(
                             'INSERT IGNORE INTO local_library (tmdb_id, media_type, season_number, episode_number, file_path, title_keyword) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE tmdb_id = VALUES(tmdb_id)',
-                            [showTmdbId ? String(showTmdbId) : null, 'tv', seasonNumber, episodeNumber, filePath, showName]
+                            [showTmdbId ? String(showTmdbId) : null, 'tv', seasonNumber, episodeNumber, relativePath, showName]
                         );
                         scannedCount++;
                     }
