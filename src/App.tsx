@@ -29,7 +29,7 @@ import {
   Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { movieApi, setAuthEmail } from './lib/api';
+import { movieApi, setAuthEmail, getBaseUrl, discoverBackend } from './lib/api';
 import { Movie, MovieDetails, Review, WatchlistItem } from './types';
 import AdminDashboard from './components/AdminDashboard';
 import DownloadsScreen from './components/DownloadsScreen';
@@ -115,13 +115,18 @@ export default function App() {
       setIsSplashVisible(false);
     }, 3000);
     
-    checkDbStatus();
-    if (user) {
-      setAuthEmail(user);
-      fetchInitialData();
-      checkAdminStatus();
-      fetchPublicSettings();
-    }
+    const initApp = async () => {
+      await discoverBackend();
+      checkDbStatus();
+      if (user) {
+        setAuthEmail(user);
+        fetchInitialData();
+        checkAdminStatus();
+        fetchPublicSettings();
+      }
+    };
+    initApp();
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         // D-pad Navigation Enhancement
@@ -183,25 +188,8 @@ export default function App() {
   };
 
   const checkDbStatus = async () => {
-    let baseUrl = '';
+    const baseUrl = getBaseUrl();
     try {
-      const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
-      baseUrl = envUrl;
-      
-      if (typeof window !== 'undefined') {
-        const hostname = window.location.hostname;
-        const isVercel = hostname.includes('vercel.app');
-        const isAIStudio = hostname.includes('run.app') || hostname.includes('google.com');
-
-        if (isVercel) {
-          baseUrl = envUrl || 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
-        } else if (isAIStudio) {
-          baseUrl = '';
-        } else if (baseUrl && baseUrl.includes('run.app')) {
-          baseUrl = '';
-        }
-      }
-
       const res = await fetch(`${baseUrl}/api/health`, {
         headers: {
            'Accept': 'application/json'
@@ -211,10 +199,12 @@ export default function App() {
       setDbStatus(data.dbConnected);
       if (!data.dbConnected) {
           setDbErrorMessage(data.dbError);
+      } else {
+          setDbErrorMessage(null);
       }
     } catch (err) {
       setDbStatus(false);
-      setDbErrorMessage(`Could not contact system backend (${baseUrl}/api/health). Please verify server is alive.`);
+      setDbErrorMessage(`System Offline: Could not contact backend (${baseUrl}/api/health).`);
     }
   };
 
@@ -336,6 +326,41 @@ export default function App() {
       }
     } else {
       setSearchResults([]);
+    }
+  };
+
+  const handleInAppDownload = async (movie: Movie) => {
+    if (!isPremium) {
+       setShowCheckout(true);
+       return;
+    }
+
+    try {
+        const isNative = window.location.protocol === 'capacitor:';
+        
+        if (isNative) {
+            // For Native Apps: Show a real native download flow placeholder
+            // In a full implementation, we'd use Capacitor Filesystem + Background Fetch
+            showGlobalMessage('info', `Initializing secure download for ${movie.title || movie.name}...`);
+            await movieApi.addToDownloads({
+                movie_id: movie.id,
+                title: movie.title || movie.name,
+                poster_path: movie.poster_path,
+                media_type: movie.media_type || 'movie'
+            });
+            setTimeout(() => showGlobalMessage('success', 'Title added to your local vault.'), 2000);
+        } else {
+            // Web flow
+            await movieApi.addToDownloads({
+                movie_id: movie.id,
+                title: movie.title || movie.name,
+                poster_path: movie.poster_path,
+                media_type: movie.media_type || 'movie'
+            });
+            showGlobalMessage('success', 'Title added to your offline library.');
+        }
+    } catch (err) {
+        showGlobalMessage('error', 'Download synchronization failed.');
     }
   };
 
@@ -676,8 +701,14 @@ export default function App() {
 
         {!dbStatus && (
             <div className="bg-red-600/10 border-b border-red-600/20 px-12 py-2 flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">Database Offline: Watchlist and Reviews are in read-only/demo mode.</p>
-                <button onClick={checkDbStatus} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white">Retry Connection</button>
+                <div className="flex items-center gap-3">
+                    <AlertCircle size={14} className="text-red-500" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">System Offline: {dbErrorMessage || 'Database in read-only mode.'}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    <button onClick={() => setActiveTab('profile')} className="text-[10px] font-bold uppercase tracking-widest text-white underline underline-offset-4 decoration-red-600/30 hover:decoration-red-600 transition-all">Configure Nexus</button>
+                    <button onClick={checkDbStatus} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white">Retry Connection</button>
+                </div>
             </div>
         )}
         {/* Global Notifications Overlay */}
@@ -1026,16 +1057,10 @@ export default function App() {
                                 Play Film
                             </button>
                             <button 
-                                onClick={() => {
-                                    if (isPremium) {
-                                        setShowDownloadApp(true);
-                                    } else {
-                                        setShowCheckout(true);
-                                    }
-                                }}
+                                onClick={() => handleInAppDownload(selectedMovie)}
                                 className="flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 bg-white/5 text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-[11px] flex items-center justify-center gap-2 md:gap-3 transition-all hover:bg-white/10 border border-white/10 active:scale-95"
                             >
-                                <Download size={14} className="md:w-4 md:h-4" /> {isPremium ? 'Download' : 'Download'}
+                                <Download size={14} className="md:w-4 md:h-4" /> Offline Download
                             </button>
                             <button 
                                 onClick={(e) => toggleWatchlist(e, selectedMovie)}

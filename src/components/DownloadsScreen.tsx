@@ -14,9 +14,16 @@ const DownloadsScreen: React.FC = () => {
       setIsLoading(true);
       const data = await movieApi.getDownloads();
       setDownloads(data);
+      localStorage.setItem('cinode_downloads_cache', JSON.stringify(data));
       setError(null);
     } catch (err) {
-      setError('Failed to load local vault');
+      const cached = localStorage.getItem('cinode_downloads_cache');
+      if (cached) {
+        setDownloads(JSON.parse(cached));
+        setError(null); // Silent fail if we have cache
+      } else {
+        setError('Failed to load local vault');
+      }
     } finally {
       setIsLoading(false);
     }

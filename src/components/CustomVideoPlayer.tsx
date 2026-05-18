@@ -14,6 +14,7 @@ import {
   MonitorPlay
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getBaseUrl } from '../lib/api';
 
 interface CustomVideoPlayerProps {
   src: string;
@@ -314,7 +315,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       {/* Video Element */}
       <video
         ref={videoRef}
-        src={src.replace(/ /g, '%20')}
+        src={(src.startsWith('/') ? getBaseUrl() + src : src).replace(/ /g, '%20')}
         poster={poster}
         className="w-full h-full object-contain pointer-events-auto"
         onTimeUpdate={handleTimeUpdate}

@@ -1,34 +1,83 @@
 import axios from 'axios';
 import { Movie, MovieDetails, Review, WatchlistItem } from '../types';
 
-const getBaseUrl = () => {
-  const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+let workingBaseUrl = '';
+
+export const getBaseUrl = () => {
+  if (workingBaseUrl) return workingBaseUrl;
   
-  if (typeof window === 'undefined') return envUrl;
+  const lStorageUrl = typeof window !== 'undefined' ? localStorage.getItem('cinode_backend_url') : null;
+  if (lStorageUrl) return lStorageUrl;
+
+  const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+  const productionUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
+  
+  if (typeof window === 'undefined') return envUrl || productionUrl;
 
   const hostname = window.location.hostname;
-  const isVercel = hostname.includes('vercel.app');
+  const isNative = window.location.protocol === 'capacitor:' || 
+                   hostname === 'localhost' && !window.location.port ||
+                   hostname === 'localhost' && window.location.port === '3000' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                   
   const isAIStudio = hostname.includes('run.app') || hostname.includes('google.com');
 
-  // 1. If on Vercel, prioritize envUrl, or fallback to AI Studio if no env provided
-  if (isVercel) {
-    return envUrl || 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
+  if (isNative) {
+    return envUrl || productionUrl;
   }
 
-  // 2. If on AI Studio, relative path is always safest for the same-origin backend
-  if (isAIStudio) {
-    return '';
-  }
+  if (isAIStudio) return '';
 
-  // 3. For VPS / IP / Custom Domain: 
-  // If the baked-in URL is pointing to AI Studio, we should IGNORE it and use relative path.
-  // This is the most common issue when users "download" or "deploy" the app.
-  if (envUrl && envUrl.includes('run.app')) {
-    return '';
-  }
+  return envUrl || ''; 
+};
 
-  // Otherwise use the envUrl (if it's a custom backend) or relative path
-  return envUrl; 
+// Nexus Probing: Automatically find the best working backend
+export const discoverBackend = async () => {
+  if (typeof window === 'undefined') return;
+
+  const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+  const productionUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
+  const currentOrigin = window.location.origin;
+  
+  const candidates = [
+    localStorage.getItem('cinode_backend_url'),
+    envUrl,
+    currentOrigin,
+    productionUrl
+  ].filter(Boolean) as string[];
+
+  // Deduplicate and filter out capacitor/localhost for probing unless specifically envUrl
+  const uniqueCandidates = Array.from(new Set(candidates)).filter(url => {
+    if (url === 'capacitor://localhost' || url === 'http://localhost') return false;
+    return true;
+  });
+
+  for (const url of uniqueCandidates) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout for probing
+      
+      const res = await fetch(`${url}/api/health`, { 
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' }
+      });
+      clearTimeout(timeoutId);
+      
+      const data = await res.json();
+      if (data.status === 'ok') {
+        console.log(`[Nexus] Backend discovered at: ${url}`);
+        workingBaseUrl = url;
+        // If it's the current origin or AI Studio (already handled by relative), we can just use empty string for web
+        if (url === currentOrigin && !window.location.protocol.startsWith('capacitor')) {
+            workingBaseUrl = '';
+        }
+        return workingBaseUrl;
+      }
+    } catch (e) {
+      // Continue to next candidate
+    }
+  }
+  
+  console.warn("[Nexus] No customized backend found, falling back to defaults.");
 };
 
 const api = axios.create({
@@ -139,4 +188,5 @@ export const movieApi = {
   updateLocalLibrary: (id: number | string, tmdb_id: string | null) => api.post('/admin/local-library/update', { id, tmdb_id }).then(res => res.data),
   browseDirectory: (path?: string) => api.get('/admin/browse', { params: { path } }).then(res => res.data),
   scanLocalLibrary: (moviePath: string, tvPath: string) => api.post('/admin/local-library/scan', { moviePath, tvPath }).then(res => res.data),
+  testAdminMail: (to: string) => api.post('/admin/mail-test', { to }).then(res => res.data),
 };

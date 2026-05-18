@@ -28,7 +28,8 @@ import {
   Send,
   ArrowUpRight,
   ChevronLeft,
-  Folder
+  Folder,
+  Mail
 } from 'lucide-react';
 import { movieApi } from '../lib/api';
 import { motion, AnimatePresence } from 'motion/react';
@@ -49,7 +50,7 @@ const AdminDashboard: React.FC = () => {
   const [localLibrary, setLocalLibrary] = useState<any[]>([]);
   const [scanLoading, setScanLoading] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'content' | 'archive' | 'settings' | 'payments' | 'payconfig' | 'affiliates' | 'ads' | 'notifications'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'content' | 'archive' | 'settings' | 'payments' | 'payconfig' | 'affiliates' | 'ads' | 'notifications' | 'mail'>('stats');
   const [loading, setLoading] = useState(false);
   const [movieScanPath, setMovieScanPath] = useState('');
   const [tvScanPath, setTvScanPath] = useState('');
@@ -376,8 +377,10 @@ const AdminDashboard: React.FC = () => {
              {[
                { id: 'stats', label: 'Stats' },
                { id: 'users', label: 'Users' },
-               { id: 'content', label: 'Vault' },
+               { id: 'overrides', label: 'Vault' },
+               { id: 'archive', label: 'Archive' },
                { id: 'notifications', label: 'Notifs' },
+               { id: 'mail', label: 'Mail' },
                { id: 'payments', label: 'Sales' },
                { id: 'payconfig', label: 'Config' },
                { id: 'affiliates', label: 'Affiliates' },
@@ -397,7 +400,7 @@ const AdminDashboard: React.FC = () => {
 
         {/* Sidebar / Desktop Nav */}
         <div className="hidden md:flex flex-col md:w-64 flex-shrink-0 w-full md:h-full border-r border-white/5 bg-[#0D0D0E]/30 backdrop-blur-md relative z-[50]">
-          <div className="flex flex-col p-4 gap-2 w-full h-full">
+          <div className="flex flex-col p-4 gap-2 w-full h-full overflow-y-auto no-scrollbar">
             <div className="space-y-1">
               <p className="px-3 text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-4">Command Center</p>
               
@@ -439,6 +442,14 @@ const AdminDashboard: React.FC = () => {
               >
                   <Bell size={18} className={activeTab === 'notifications' ? 'text-white' : 'text-yellow-500 group-hover:scale-110 transition-transform'} /> 
                   <span className="tracking-tight">Announcements</span>
+              </button>
+
+              <button 
+                  onClick={() => { setActiveTab('mail'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${activeTab === 'mail' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <Mail size={18} className={activeTab === 'mail' ? 'text-white' : 'text-orange-400 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">Mail Ops</span>
               </button>
             </div>
 
@@ -1768,6 +1779,81 @@ const AdminDashboard: React.FC = () => {
                         </button>
                     </div>
                 </motion.div>
+            </div>
+          )}
+
+          {activeTab === 'mail' && (
+            <div className="space-y-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-serif italic text-white tracking-tighter">Mail Engine Protocol</h2>
+                  <p className="text-xs text-white/40 uppercase tracking-widest font-black italic">Configure SMTP relays for automated notifications & triggers.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-[#0D0D0E] p-8 border border-white/5 rounded-3xl space-y-6 shadow-sm">
+                   <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Relay Credentials</h3>
+                   <div className="space-y-4">
+                      {[
+                        { id: 'SMTP_HOST', label: 'SMTP Host', placeholder: 'smtp.gmail.com' },
+                        { id: 'SMTP_PORT', label: 'SMTP Port', placeholder: '587' },
+                        { id: 'SMTP_USER', label: 'SMTP User/Email', placeholder: 'user@gmail.com' },
+                        { id: 'SMTP_PASS', label: 'SMTP Password', placeholder: 'Enter APP Password', type: 'password' },
+                        { id: 'SMTP_FROM', label: 'Sender Address', placeholder: 'Your App <noreply@cinode.com>' }
+                      ].map(field => (
+                        <div key={field.id} className="space-y-2">
+                          <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{field.label}</label>
+                          <div className="flex gap-2">
+                            <input 
+                              id={`config-${field.id}`}
+                              type={field.type || 'text'}
+                              placeholder={field.placeholder}
+                              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:border-red-600 focus:outline-none"
+                            />
+                            <button 
+                              onClick={() => handleSaveConfig(field.id, (document.getElementById(`config-${field.id}`) as any).value)}
+                              className="px-6 bg-white text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-orange-500 hover:text-white transition-all shadow-xl"
+                            >Save</button>
+                          </div>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+
+                <div className="bg-[#0D0D0E] p-8 border border-white/5 rounded-3xl space-y-6 shadow-sm">
+                   <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Operational Status</h3>
+                   <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4">
+                      <p className="text-xs text-white/60 leading-relaxed italic">
+                        These credentials will be injected into the system backend to handle:
+                      </p>
+                      <ul className="text-[10px] text-white/40 space-y-2 uppercase tracking-wider font-bold">
+                        <li className="flex items-center gap-2"><Check size={12} className="text-red-500" /> Account Sign-up Verifications</li>
+                        <li className="flex items-center gap-2"><Check size={12} className="text-red-500" /> Password Recovery Linkages</li>
+                        <li className="flex items-center gap-2"><Check size={12} className="text-red-500" /> Operational Newsletters</li>
+                        <li className="flex items-center gap-2"><Check size={12} className="text-red-500" /> Transactional Confirmation Receipts</li>
+                      </ul>
+                   </div>
+                   <button 
+                      onClick={async () => {
+                        const target = prompt("Enter target email address for test signal", "");
+                        if (!target) return;
+                        setLoading(true);
+                        try {
+                          await movieApi.testAdminMail(target);
+                          showMsg('success', 'Relay test dispatched successfully.');
+                        } catch (err: any) {
+                          showMsg('error', `Relay failure: ${err.message}`);
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      className="w-full py-4 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] text-white/40 hover:bg-white/5 hover:text-white transition-all flex items-center justify-center gap-2"
+                   >
+                      <Send size={14} /> Verify Signal Integrity
+                   </button>
+                </div>
+              </div>
             </div>
           )}
 

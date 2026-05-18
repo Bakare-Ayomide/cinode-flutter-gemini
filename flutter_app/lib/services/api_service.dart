@@ -1,12 +1,67 @@
 import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/movie.dart';
 
 class ApiService {
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://ais-dev-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app/api',
-  ));
+  String _baseUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app/api';
+  late final Dio _dio;
+
+  ApiService() {
+    _dio = Dio(BaseOptions(
+      baseUrl: _baseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 30),
+    ));
+    _init();
+  }
+
+  Future<void> _init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUrl = prefs.getString('cinode_backend_url');
+    if (savedUrl != null && savedUrl.isNotEmpty) {
+      _updateBaseUrl(savedUrl);
+    }
+  }
+
+  void _updateBaseUrl(String url) {
+    _baseUrl = url.endsWith('/api') ? url : (url.endsWith('/') ? '${url}api' : '$url/api');
+    _dio.options.baseUrl = _baseUrl;
+  }
+
+  Future<void> setCustomBackend(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (url.isEmpty) {
+      await prefs.remove('cinode_backend_url');
+    } else {
+      await prefs.setString('cinode_backend_url', url);
+      _updateBaseUrl(url);
+    }
+  }
+
+  Future<String?> discoverBackend() async {
+    final productionUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app/api';
+    final candidates = [
+       _baseUrl,
+       productionUrl,
+    ];
+
+    for (var url in candidates) {
+      try {
+        final probeDio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 3)));
+        final cleanUrl = url.endsWith('/api') ? url : (url.endsWith('/') ? '${url}api' : '$url/api');
+        final response = await probeDio.get('$cleanUrl/health');
+        if (response.statusCode == 200 && response.data['status'] == 'ok') {
+          _updateBaseUrl(url);
+          return url;
+        }
+      } catch (e) {
+        // Continue
+      }
+    }
+    return null;
+  }
 
   Future<Movie?> getMovieDetails(String type, String id) async {
     try {
@@ -521,6 +576,19 @@ class ApiService {
     );
   }
 
+  Future<bool> testAdminMail(String email, String targetEmail) async {
+    try {
+      final response = await _dio.post(
+        '/admin/mail-test',
+        data: {'to': targetEmail},
+        options: Options(headers: {'x-user-email': email}),
+      );
+      return response.data['success'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<List<dynamic>> getAdminUsers(String email) async {
     try {
       final response = await _dio.get(
@@ -560,6 +628,47 @@ class ApiService {
     await _dio.post(
       '/admin/users/revoke-premium',
       data: {'email': userEmail},
+      options: Options(headers: {'x-user-email': email}),
+    );
+  }
+
+  Future<List<dynamic>> getAdminLocalLibrary(String email) async {
+    try {
+      final response = await _dio.get(
+        '/admin/local-library',
+        options: Options(headers: {'x-user-email': email}),
+      );
+      return response.data;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> browseDirectory(String email, {String? path}) async {
+    try {
+      final response = await _dio.get(
+        '/admin/browse',
+        queryParameters: {'path': path},
+        options: Options(headers: {'x-user-email': email}),
+      );
+      return response.data;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<void> scanLocalLibrary(String email, String moviePath, String tvPath) async {
+    await _dio.post(
+      '/admin/local-library/scan',
+      data: {'moviePath': moviePath, 'tvPath': tvPath},
+      options: Options(headers: {'x-user-email': email}),
+    );
+  }
+
+  Future<void> updateLocalLibraryEntry(String email, dynamic id, String? tmdbId) async {
+    await _dio.post(
+      '/admin/local-library/update',
+      data: {'id': id, 'tmdb_id': tmdbId},
       options: Options(headers: {'x-user-email': email}),
     );
   }

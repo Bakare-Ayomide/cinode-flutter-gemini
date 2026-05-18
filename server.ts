@@ -8,6 +8,7 @@ import fsSync from "fs";
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import axios from "axios";
 import cors from "cors";
+import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import multer from "multer";
 
@@ -44,7 +45,19 @@ ensureUploadsDir();
 app.use('/uploads', express.static(uploadDir));
 
 app.use(cors({
-  origin: true, // Reflects the request origin, good for dynamic Vercel previews
+  origin: (origin, callback) => {
+    // Check if the origin is allowed (capacitor, localhost, or matching a specific pattern)
+    if (!origin || 
+        origin === 'capacitor://localhost' || 
+        origin.startsWith('http://localhost') || 
+        origin.includes('vercel.app') || 
+        origin.includes('run.app') || 
+        origin.includes('google.com')) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Fallback to allowing everything for now to be safe with Coolify
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-user-email'],
   credentials: true
@@ -87,10 +100,60 @@ const pool = connectionString
     }
 });
 
+// Cache for Gemini recommendations
+const recommendationCache = new Map<string, { titles: string[], timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
+
 let dbReady = false;
 let dbError: string | null = null;
 let settingsCache: Record<string, string> = {};
 let lastSettingsFetch = 0;
+
+// Mail utility mapping settings to SMTP
+async function getEmailTransporter() {
+    const settings = await fetchSettings();
+    const host = settings.SMTP_HOST;
+    const port = parseInt(settings.SMTP_PORT || "587");
+    const user = settings.SMTP_USER;
+    const pass = settings.SMTP_PASS;
+
+    if (!host || !user || !pass) {
+        console.warn("[Mail] SMTP not fully configured in settings. Check Registry/Mail tab.");
+        return null;
+    }
+
+    return nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465, // true for 465, false for other ports
+        auth: {
+            user: user,
+            pass: pass
+        },
+        tls: {
+            rejectUnauthorized: false
+        }
+    });
+}
+
+async function sendMail(to: string, subject: string, text: string, html?: string) {
+    try {
+        const transporter = await getEmailTransporter();
+        if (!transporter) return false;
+
+        const settings = await fetchSettings();
+        const from = settings.SMTP_FROM || `"Cinode Ops" <${settings.SMTP_USER}>`;
+
+        await transporter.sendMail({
+            from, to, subject, text, html
+        });
+        console.log(`[Mail] Message sent to ${to}: ${subject}`);
+        return true;
+    } catch (err) {
+        console.error("[Mail] Failed to dispatch signal:", err);
+        return false;
+    }
+}
 
 async function fetchSettings() {
     const now = Date.now();
@@ -1521,11 +1584,45 @@ app.post("/api/admin/payments/review", ensureDB, adminOnly, async (req, res) => 
             const [notif]: any = await pool.execute('INSERT INTO notifications (title, message, type, target_type, target_user_email) VALUES (?, ?, ?, ?, ?)', 
                 ['Payment Approved', `Your ${submission.plan} subscription has been activated. Enjoy Cinode Premium!`, 'success', 'user', submission.user_email]);
             await pool.execute('INSERT INTO user_notifications (notification_id, user_email) VALUES (?, ?)', [notif.insertId, submission.user_email]);
+            
+            // Dispatch Email Signal
+            sendMail(
+                submission.user_email, 
+                "Cinode Premium Activated", 
+                `Your ${submission.plan} subscription has been activated. Welcome to the Vault.`,
+                `
+                <div style="font-family: serif; font-style: italic; background: #0A0A0B; color: white; padding: 40px; border-radius: 20px; border: 1px solid #10b981;">
+                    <h1 style="color: #10b981; text-transform: uppercase; letter-spacing: 2px;">Premium Active</h1>
+                    <p style="font-size: 16px; opacity: 0.8;">Your <b>${submission.plan}</b> plan is now online.</p>
+                    <p style="font-size: 14px; opacity: 0.6;">Welcome to the Cinode Vault. Your premium benefits are now active on your account.</p>
+                    <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+                    <p style="font-size: 10px; opacity: 0.4; text-transform: uppercase;">Cinode Infrastructure • Secure Nexus</p>
+                </div>
+                `
+            ).catch(e => console.error("Mail dispatch failed", e));
+
         } else if (status === 'rejected') {
             // Send notification
             const [notif]: any = await pool.execute('INSERT INTO notifications (title, message, type, target_type, target_user_email) VALUES (?, ?, ?, ?, ?)', 
                 ['Payment Rejected', `Your payment submission was rejected. Reason: ${admin_notes || 'No reason provided'}.`, 'error', 'user', submission.user_email]);
             await pool.execute('INSERT INTO user_notifications (notification_id, user_email) VALUES (?, ?)', [notif.insertId, submission.user_email]);
+
+            // Dispatch Email Signal
+            sendMail(
+                submission.user_email, 
+                "Payment Signal Denied", 
+                `Your payment submission was rejected. Reason: ${admin_notes || 'No reason provided'}`,
+                `
+                <div style="font-family: serif; font-style: italic; background: #0A0A0B; color: white; padding: 40px; border-radius: 20px; border: 1px solid #dc2626;">
+                    <h1 style="color: #dc2626; text-transform: uppercase; letter-spacing: 2px;">Signal Denied</h1>
+                    <p style="font-size: 16px; opacity: 0.8;">Your payment submission was rejected.</p>
+                    <div style="background: rgba(220, 38, 38, 0.1); border: 1px solid rgba(220, 38, 38, 0.2); padding: 15px; border-radius: 10px; margin: 20px 0;">
+                        <p style="margin: 0; color: #dc2626; font-size: 14px;"><b>Reason:</b> ${admin_notes || 'Documentation insufficent or signal mismatch.'}</p>
+                    </div>
+                    <p style="font-size: 12px; opacity: 0.6;">Please contact operations if you believe this is an error.</p>
+                </div>
+                `
+            ).catch(e => console.error("Mail dispatch failed", e));
         }
 
         res.json({ success: true });
@@ -2106,6 +2203,14 @@ app.get("/api/recommendations", ensureDB, async (req, res) => {
         }
 
         const titles = history.map((h: any) => h.title).join(", ");
+        
+        // Cache lookup
+        const cacheKey = titles;
+        const cached = recommendationCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+            return res.json(cached.titles);
+        }
+
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) return res.json([]);
 
@@ -2114,22 +2219,30 @@ app.get("/api/recommendations", ensureDB, async (req, res) => {
             const ai = new GoogleGenAI({
               apiKey: apiKey,
               httpOptions: {
-                headers: {
-                  'User-Agent': 'aistudio-build',
-                }
+                headers: { 'User-Agent': 'aistudio-build' }
               }
             });
             
             const response = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
+                model: "gemini-1.5-flash",
                 contents: `Based on these movies/TV shows: ${titles}, recommend 5 similar popular titles. Return ONLY a JSON array of strings (the titles). No markdown, no explanation.`
             });
 
             const responseText = response.text || "[]";
             const cleaned = responseText.replace(/```json|```/g, "").trim();
             recommendations = JSON.parse(cleaned);
+            
+            // Save to cache
+            if (recommendations.length > 0) {
+                recommendationCache.set(cacheKey, { titles: recommendations, timestamp: Date.now() });
+            }
         } catch (aiErr: any) {
-            console.error("AI Recommendation failed or quota exceeded, falling back to TMDB:", aiErr.message);
+            if (aiErr.message?.includes('429') || aiErr.message?.includes('quota')) {
+                console.warn("[Nexus] AI Quota exceeded, using TMDB fallback.");
+            } else {
+                console.error("AI Recommendation failed:", aiErr.message);
+            }
+            
             // Fallback: Use TMDB recommendations
             const historyToUse = history.slice(0, 3);
             for (const item of historyToUse) {
@@ -2155,6 +2268,14 @@ app.get("/api/recommendations", ensureDB, async (req, res) => {
         console.error("Recommendations failure:", err.message);
         res.json([]); // Fail gracefully
     }
+});
+
+app.post("/api/admin/mail-test", ensureDB, adminOnly, async (req, res) => {
+    const { to } = req.body;
+    if (!to) return res.status(400).json({ error: "Target email required" });
+    const success = await sendMail(to, "SMTP Nexus Operational", "Your Cinode mail relay is online and secure.", "<h1>Nexus Operational</h1><p>Your Cinode mail relay is online and secure.</p>");
+    if (success) res.json({ success: true });
+    else res.status(500).json({ error: "Relay failed" });
 });
 
 async function startServer() {

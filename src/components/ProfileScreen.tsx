@@ -63,7 +63,19 @@ const ProfileScreen: React.FC<{ userEmail: string; onUpgrade: () => void; onLogo
 
   const isPremium = userData?.is_premium || userData?.is_admin;
 
+  const [backendUrl, setBackendUrl] = useState(localStorage.getItem('cinode_backend_url') || '');
+
+  const saveBackendUrl = () => {
+    if (backendUrl) {
+      localStorage.setItem('cinode_backend_url', backendUrl.replace(/\/$/, ''));
+    } else {
+      localStorage.removeItem('cinode_backend_url');
+    }
+    window.location.reload(); // Reload to apply new URL
+  };
+
   const preferences = [
+    { icon: <Settings size={18} />, label: 'Connection', desc: 'Manage system backend nexus' },
     { icon: <Bell size={18} />, label: 'Notifications', desc: 'Manage alerts and push messages' },
     { icon: <Lock size={18} />, label: 'Privacy', desc: 'Control your visibility and data' },
     { icon: <Settings size={18} />, label: 'Playback', desc: 'Adjust streaming quality and speed' },
@@ -101,38 +113,61 @@ const ProfileScreen: React.FC<{ userEmail: string; onUpgrade: () => void; onLogo
               </div>
 
               <div className="space-y-6">
-                <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-medium text-white/80">Enable {activeDetail} Engine</p>
-                        <p className="text-[10px] text-white/30 mt-1">Activate system-level optimization</p>
+                {activeDetail === 'Connection' ? (
+                  <div className="space-y-6">
+                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4">
+                        <div>
+                            <p className="text-sm font-medium text-white/80">System Backend URL</p>
+                            <p className="text-[10px] text-white/30 mt-1 font-mono uppercase">Current Protocol: {window.location.protocol}</p>
+                        </div>
+                        <input 
+                            type="text"
+                            value={backendUrl}
+                            onChange={(e) => setBackendUrl(e.target.value)}
+                            placeholder="https://your-backend.com"
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-red-600 outline-none transition-all"
+                        />
+                        <p className="text-[8px] text-white/20 uppercase tracking-widest leading-relaxed">
+                            Used for native applications to establish a link with your VPS or Cloud deployment. Enter full URL including https://
+                        </p>
                     </div>
-                    <button 
-                      onClick={() => activeDetail && toggleSetting(activeDetail, 'enabled')}
-                      className={`w-12 h-6 rounded-full relative transition-colors ${activeDetail && settings[activeDetail]?.enabled ? 'bg-red-600' : 'bg-white/10'}`}
-                    >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${activeDetail && settings[activeDetail]?.enabled ? 'right-1' : 'left-1'}`} />
-                    </button>
-                </div>
-                <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-medium text-white/80">Advanced Mode</p>
-                        <p className="text-[10px] text-white/30 mt-1">Unlock scrupulous overrides</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-white/80">Enable {activeDetail} Engine</p>
+                            <p className="text-[10px] text-white/30 mt-1">Activate system-level optimization</p>
+                        </div>
+                        <button 
+                          onClick={() => activeDetail && toggleSetting(activeDetail, 'enabled')}
+                          className={`w-12 h-6 rounded-full relative transition-colors ${activeDetail && settings[activeDetail]?.enabled ? 'bg-red-600' : 'bg-white/10'}`}
+                        >
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${activeDetail && settings[activeDetail]?.enabled ? 'right-1' : 'left-1'}`} />
+                        </button>
                     </div>
-                    <button 
-                      onClick={() => activeDetail && toggleSetting(activeDetail, 'advanced')}
-                      className={`w-12 h-6 rounded-full relative transition-colors ${activeDetail && settings[activeDetail]?.advanced ? 'bg-red-600' : 'bg-white/10'}`}
-                    >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${activeDetail && settings[activeDetail]?.advanced ? 'right-1' : 'left-1'}`} />
-                    </button>
-                </div>
+                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-white/80">Advanced Mode</p>
+                            <p className="text-[10px] text-white/30 mt-1">Unlock scrupulous overrides</p>
+                        </div>
+                        <button 
+                          onClick={() => activeDetail && toggleSetting(activeDetail, 'advanced')}
+                          className={`w-12 h-6 rounded-full relative transition-colors ${activeDetail && settings[activeDetail]?.advanced ? 'bg-red-600' : 'bg-white/10'}`}
+                        >
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${activeDetail && settings[activeDetail]?.advanced ? 'right-1' : 'left-1'}`} />
+                        </button>
+                    </div>
+                  </>
+                )}
               </div>
 
               <button 
-                onClick={handleSaveSettings}
+                onClick={activeDetail === 'Connection' ? saveBackendUrl : handleSaveSettings}
                 disabled={isSaving}
                 className="w-full py-4 bg-white text-black font-bold uppercase tracking-widest text-[10px] rounded-xl hover:scale-105 transition-all disabled:opacity-50"
               >
-                {isSaving ? 'Synchronizing...' : 'Sync Changes'}
+                {isSaving ? 'Synchronizing...' : activeDetail === 'Connection' ? 'Re-establish Connection' : 'Sync Changes'}
               </button>
             </motion.div>
           </motion.div>

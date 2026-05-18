@@ -46,6 +46,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadAuth() async {
     final prefs = await SharedPreferences.getInstance();
+    
+    // Nexus Discovery Protocol
+    final api = context.read<ApiService>();
+    await api.discoverBackend();
+
     final email = prefs.getString('user_email');
     if (email != null) {
       if (mounted) {

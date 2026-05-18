@@ -18,8 +18,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<dynamic> _ads = [];
   List<dynamic> _notifications = [];
   List<dynamic> _users = [];
+  List<dynamic> _localLibrary = [];
   bool _isLoading = true;
   String _activeTab = 'stats';
+  final _emailTargetController = TextEditingController();
 
   @override
   void initState() {
@@ -40,6 +42,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         api.getAdminAds(user),
         api.getAdminNotifications(user),
         api.getAdminUsers(user),
+        api.getAdminLocalLibrary(user),
       ]);
 
       if (mounted) {
@@ -50,6 +53,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _ads = results[3];
           _notifications = results[4];
           _users = results[5];
+          _localLibrary = results[6];
           _stats = {
             'users': _users.length,
             'payments': _payments.where((p) => p['status'] == 'pending').length,
@@ -102,6 +106,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _buildTabButton('AFFILIATES', 'affiliates'),
           _buildTabButton('ADS', 'ads'),
           _buildTabButton('NOTIFICATIONS', 'notifications'),
+          _buildTabButton('MAIL', 'mail'),
+          _buildTabButton('ARCHIVE', 'archive'),
           _buildTabButton('OVERRIDES', 'overrides'),
         ],
       ),
@@ -132,9 +138,99 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 'affiliates': return _buildAffiliatesList();
       case 'ads': return _buildAdsList();
       case 'notifications': return _buildNotificationsList();
+      case 'mail': return _buildMailOps();
+      case 'archive': return _buildArchiveList();
       case 'overrides': return _buildOverridesList();
       default: return _buildStatsDashboard();
     }
+  }
+
+  Widget _buildMailOps() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('MAIL ENGINE PROTOCOL', style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 2)),
+        const SizedBox(height: 30),
+        Container(
+          padding: const EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            color: const Color(0xFF161618),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('SMTP RELAY TEST', style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              const Text('Dispatch a signal integrity check to any email address.', style: TextStyle(color: Colors.white24, fontSize: 12)),
+              const SizedBox(height: 30),
+              TextField(
+                controller: _emailTargetController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'TARGET@EMAIL.COM',
+                  hintStyle: const TextStyle(color: Colors.white12),
+                  filled: true,
+                  fillColor: Colors.black.withOpacity(0.2),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                  ),
+                  onPressed: () async {
+                    final target = _emailTargetController.text.trim();
+                    if (target.isEmpty) return;
+                    setState(() => _isLoading = true);
+                    final success = await ApiService().testAdminMail("contactzerolord@gmail.com", target);
+                    setState(() => _isLoading = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(success ? 'Signal dispatched successfully' : 'Relay failure detected'))
+                    );
+                  },
+                  child: const Text('VERIFY SIGNAL INTEGRITY', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildArchiveList() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('LOCAL ARCHIVE SCAN', style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 2)),
+            ElevatedButton(onPressed: () => _fetchData(), child: const Text('REFRESH', style: TextStyle(fontSize: 10))),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _localLibrary.length,
+            itemBuilder: (context, index) {
+              final item = _localLibrary[index];
+              return ListTile(
+                title: Text(item['name'], style: const TextStyle(color: Colors.white, fontSize: 13)),
+                subtitle: Text(item['path'], style: const TextStyle(color: Colors.white24, fontSize: 9), maxLines: 1),
+                trailing: Text(item['tmdb_id'] != null ? 'SYNCED' : 'UNLINKED', style: TextStyle(color: item['tmdb_id'] != null ? Colors.green : Colors.red, fontSize: 9, fontWeight: FontWeight.bold)),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildUsersList() {
