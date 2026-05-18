@@ -52,21 +52,31 @@ app.use(cors({
 app.use(express.json());
 
 // MySQL Database Setup with timeout and connection testing
-const pool = mysql.createPool({
+const dbConfig = {
     host: process.env.DB_HOST || "131.153.147.178",
     user: process.env.DB_USER || "zerolord_cinode",
     password: process.env.DB_PASSWORD || "@F33rinimicinode",
     database: process.env.DB_NAME || "zerolord_cinode",
+    port: parseInt(process.env.DB_PORT || "3306"),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    connectTimeout: 20000, 
+    connectTimeout: 10000, 
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
-    // Aggressively close idle connections before server-side timeout (detected around 60s)
     maxIdle: 10,
-    idleTimeout: 30000 // Close idle connections after 30s
-});
+    idleTimeout: 30000 
+};
+
+// Check for DATABASE_URL (Coolify/Railway style)
+let connectionString = process.env.DATABASE_URL;
+if (connectionString) {
+    console.log("Using DATABASE_URL for connection");
+}
+
+const pool = connectionString 
+    ? mysql.createPool(connectionString)
+    : mysql.createPool(dbConfig);
 
 // Handle pool errors
 (pool as any).on('error', (err: any) => {
@@ -114,7 +124,11 @@ setInterval(async () => {
     }
 }, 20000); // Every 20 seconds
 
+let isInitializing = false;
+
 async function initDB() {
+  if (isInitializing) return;
+  isInitializing = true;
   console.log("Initializing database connection...");
   try {
     // Test connection first
@@ -140,9 +154,19 @@ async function initDB() {
     // Migrating existing users to have a settings column if they don't
     try {
         await pool.execute('ALTER TABLE users ADD COLUMN settings JSON AFTER last_transaction_id');
-    } catch (e) {
-        // Column probably already exists
-    }
+    } catch (e) {}
+
+    try {
+        await pool.execute('ALTER TABLE users ADD COLUMN username VARCHAR(100) AFTER email');
+    } catch (e) {}
+
+    try {
+        await pool.execute('ALTER TABLE users ADD COLUMN password VARCHAR(255) AFTER username');
+    } catch (e) {}
+
+    try {
+        await pool.execute('ALTER TABLE users ADD COLUMN is_affiliate BOOLEAN DEFAULT FALSE AFTER is_premium');
+    } catch (e) {}
 
     await pool.execute(`
         CREATE TABLE IF NOT EXISTS system_settings (
@@ -243,6 +267,24 @@ async function initDB() {
             FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE CASCADE
         ) ENGINE=InnoDB
     `);
+
+    await pool.execute(`
+        CREATE TABLE IF NOT EXISTS local_library (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            tmdb_id VARCHAR(50),
+            media_type VARCHAR(20),
+            season_number INT,
+            episode_number INT,
+            file_path TEXT,
+            title_keyword VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_local (file_path(255))
+        ) ENGINE=InnoDB
+    `);
+
+    // Ensure uploads directory exists
+    await fs.mkdir(path.join(uploadDir, 'movies'), { recursive: true });
+    await fs.mkdir(path.join(uploadDir, 'tv'), { recursive: true });
 
     // Payments
     await pool.execute(`
@@ -420,6 +462,8 @@ async function initDB() {
     }
     dbError = message;
     console.error("Database initialization failed:", dbError);
+  } finally {
+    isInitializing = false;
   }
 }
 
@@ -460,6 +504,10 @@ const tmdbFetch = async (endpoint: string, params: object = {}) => {
 };
 
 // API Routes
+app.get("/api/ping", (req, res) => {
+  res.json({ pong: true, time: new Date().toISOString() });
+});
+
 app.get("/api/health", (req, res) => {
   res.json({ 
     status: dbReady ? "online" : "degraded",
@@ -516,6 +564,24 @@ app.get("/api/discover", async (req, res) => {
   }
 });
 
+async function findTmdbIdByTitle(title: string, type: 'movie' | 'tv') {
+    try {
+        const url = `https://api.themoviedb.org/3/search/${type}`;
+        const res = await axios.get(url, {
+            params: {
+                api_key: process.env.TMDB_API_KEY || "81c3e39b977755f11e13e017688404a7",
+                query: title
+            }
+        });
+        if (res.data.results && res.data.results.length > 0) {
+            return res.data.results[0].id;
+        }
+    } catch (e) {
+        console.error(`TMDB mapping failed for ${title}:`, e);
+    }
+    return null;
+}
+
 app.get("/api/movies/details/:type/:id", async (req, res) => {
   const { type, id } = req.params;
   try {
@@ -548,6 +614,24 @@ app.get("/api/movies/details/:type/:id", async (req, res) => {
                 if (override.custom_overview) data.overview = override.custom_overview;
                 data.has_admin_override = true;
             }
+
+            // Also check Local Library (Lower priority than direct override)
+            const [localRows]: any = await pool.execute(
+                'SELECT file_path FROM local_library WHERE tmdb_id = ? AND media_type = ? LIMIT 1',
+                [String(id), type]
+            );
+            if (localRows.length > 0) {
+                const local = localRows[0];
+                if (!data.videos) data.videos = { results: [] };
+                data.videos.results.unshift({
+                    key: local.file_path.startsWith('/') ? local.file_path : `/${local.file_path}`,
+                    name: "Local Archive",
+                    site: "Cinode Library",
+                    type: "Local",
+                    is_local: true 
+                });
+                if (!data.override_url) data.override_url = local.file_path.startsWith('/') ? local.file_path : `/${local.file_path}`;
+            }
         }
     } catch (err: any) {
         console.error("Failed to fetch overrides from DB:", err.message);
@@ -571,24 +655,38 @@ app.get("/api/tv/:id/season/:season_number", async (req, res) => {
                 'SELECT * FROM media_overrides WHERE tmdb_id = ? AND media_type = "tv" AND season_number = ?',
                 [String(id), Number(season_number)]
             );
+
+            const [locals]: any = await pool.execute(
+                'SELECT * FROM local_library WHERE tmdb_id = ? AND media_type = "tv" AND season_number = ?',
+                [String(id), Number(season_number)]
+            );
             
-            if (overrides.length > 0) {
-                data.episodes = data.episodes.map((episode: any) => {
-                    const override = overrides.find((o: any) => o.episode_number === episode.episode_number);
-                    if (override) {
-                        return {
-                            ...episode,
-                            video_url: override.video_url,
-                            intro_start: override.intro_start,
-                            intro_end: override.intro_end,
-                            custom_title: override.custom_title,
-                            custom_overview: override.custom_overview,
-                            has_admin_override: true
-                        };
-                    }
-                    return episode;
-                });
-            }
+            data.episodes = data.episodes.map((episode: any) => {
+                let currentEp = { ...episode };
+                
+                // Local Library (Lower priority)
+                const local = locals.find((l: any) => l.episode_number === episode.episode_number);
+                if (local) {
+                    currentEp.video_url = local.file_path.startsWith('/') ? local.file_path : `/${local.file_path}`;
+                    currentEp.is_local = true;
+                }
+
+                // Override (Higher priority)
+                const override = overrides.find((o: any) => o.episode_number === episode.episode_number);
+                if (override) {
+                    currentEp = {
+                        ...currentEp,
+                        video_url: override.video_url,
+                        intro_start: override.intro_start,
+                        intro_end: override.intro_end,
+                        custom_title: override.custom_title,
+                        custom_overview: override.custom_overview,
+                        has_admin_override: true,
+                        is_local: false
+                    };
+                }
+                return currentEp;
+            });
         }
     } catch (dbErr: any) {
         console.error("DB Season Merge Error:", dbErr.message);
@@ -658,13 +756,41 @@ app.post("/api/user/checkout", ensureDB, async (req, res) => {
 
 // User Routes
 app.post("/api/user/login", async (req, res) => {
-  const { email } = req.body;
+  const { email, password, username, isSignUp } = req.body;
   if (!dbReady) return res.status(503).json({ error: "Database offline" });
+  
   try {
-    await pool.execute(
-        'INSERT INTO users (email) VALUES (?) ON DUPLICATE KEY UPDATE email = email',
-        [email]
-    );
+    const [existing]: any = await pool.execute('SELECT * FROM users WHERE email = ?', [email]);
+    
+    if (isSignUp) {
+        if (existing.length > 0) {
+            return res.status(400).json({ error: "User already exists with this email" });
+        }
+        await pool.execute(
+            'INSERT INTO users (email, username, password) VALUES (?, ?, ?)',
+            [email, username || email.split('@')[0], password || '']
+        );
+    } else {
+        if (existing.length === 0) {
+            return res.status(401).json({ error: "User not found. Please sign up." });
+        }
+        
+        const dbPassword = existing[0].password;
+        
+        // If user has a password set, verify it
+        if (dbPassword && dbPassword !== "") {
+            if (!password || dbPassword !== password) {
+                return res.status(401).json({ error: "Incorrect password" });
+            }
+        } else if (password) {
+            // Legacy user without password - set it now if they provided one
+            await pool.execute('UPDATE users SET password = ? WHERE email = ?', [password, email]);
+        }
+        // Update username if provided and empty
+        if (username && !existing[0].username) {
+            await pool.execute('UPDATE users SET username = ? WHERE email = ?', [username, email]);
+        }
+    }
     
     // Check for expired subscriptions and update is_premium
     const [subs]: any = await pool.query('SELECT * FROM subscriptions WHERE user_email = ? AND status = "active"', [email]);
@@ -678,10 +804,23 @@ app.post("/api/user/login", async (req, res) => {
     }
     await pool.query('UPDATE users SET is_premium = ? WHERE email = ?', [isPremium ? 1 : 0, email]);
 
-    res.json({ success: true, email });
+    const user = existing.length > 0 ? existing[0] : { email, username };
+    res.json({ success: true, email, username: user.username });
   } catch (err: any) {
-    res.status(500).json({ error: `Login failed: ${err.message}` });
+    res.status(500).json({ error: `Authentication failed: ${err.message}` });
   }
+});
+
+app.post("/api/user/forgot-password", async (req, res) => {
+    const { email } = req.body;
+    // In a real app we'd send an email. For now, we'll just check if user exists.
+    try {
+        const [rows]: any = await pool.execute('SELECT email FROM users WHERE email = ?', [email]);
+        if (rows.length === 0) return res.status(404).json({ error: "User not found" });
+        res.json({ success: true, message: "Password reset instructions would be sent to your email." });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.get("/api/user/me", ensureDB, async (req, res) => {
@@ -1713,6 +1852,96 @@ app.get("/api/admin/overrides", ensureDB, adminOnly, async (req, res) => {
     }
 });
 
+app.get("/api/admin/local-library", ensureDB, adminOnly, async (req, res) => {
+    try {
+        const [rows]: any = await pool.execute('SELECT * FROM local_library ORDER BY created_at DESC');
+        res.json(rows);
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post("/api/admin/local-library/scan", ensureDB, adminOnly, async (req, res) => {
+    try {
+        const moviesDir = path.join(uploadDir, 'movies');
+        const tvDir = path.join(uploadDir, 'tv');
+        
+        let scannedCount = 0;
+        let mappedCount = 0;
+
+        // Scan Movies
+        if (fsSync.existsSync(moviesDir)) {
+            const files = await fs.readdir(moviesDir);
+            for (const file of files) {
+                const stats = await fs.stat(path.join(moviesDir, file));
+                if (stats.isDirectory()) continue;
+                
+                const filePath = `uploads/movies/${file}`;
+                const titleKeyword = path.parse(file).name;
+                
+                // Check if already in DB
+                const [existing]: any = await pool.execute('SELECT id, tmdb_id FROM local_library WHERE file_path = ?', [filePath]);
+                
+                let tmdbId = existing.length > 0 ? existing[0].tmdb_id : null;
+                
+                if (!tmdbId) {
+                    tmdbId = await findTmdbIdByTitle(titleKeyword, 'movie');
+                    if (tmdbId) mappedCount++;
+                }
+
+                await pool.execute(
+                    'INSERT IGNORE INTO local_library (tmdb_id, media_type, file_path, title_keyword) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE tmdb_id = VALUES(tmdb_id)',
+                    [tmdbId ? String(tmdbId) : null, 'movie', filePath, titleKeyword]
+                );
+                scannedCount++;
+            }
+        }
+
+        // Scan TV
+        if (fsSync.existsSync(tvDir)) {
+            const shows = await fs.readdir(tvDir);
+            for (const showName of shows) {
+                const showPath = path.join(tvDir, showName);
+                const showStats = await fs.stat(showPath);
+                if (!showStats.isDirectory()) continue;
+
+                const showTmdbId = await findTmdbIdByTitle(showName, 'tv');
+                if (showTmdbId) mappedCount++;
+
+                const seasons = await fs.readdir(showPath);
+                for (const seasonName of seasons) {
+                    const seasonPath = path.join(showPath, seasonName);
+                    const sStats = await fs.stat(seasonPath);
+                    if (!sStats.isDirectory()) continue;
+
+                    const matchSeason = seasonName.match(/Season\s*(\d+)/i);
+                    const seasonNumber = matchSeason ? parseInt(matchSeason[1]) : 1;
+
+                    const episodes = await fs.readdir(seasonPath);
+                    for (const episodeFile of episodes) {
+                        const filePath = `uploads/tv/${showName}/${seasonName}/${episodeFile}`;
+                        const titleKeyword = path.parse(episodeFile).name;
+                        
+                        const matchEp = episodeFile.match(/Episode\s*(\d+)/i) || episodeFile.match(/E(\d+)/i) || episodeFile.match(/_(\d+)/);
+                        const episodeNumber = matchEp ? parseInt(matchEp[1]) : 1;
+
+                        await pool.execute(
+                            'INSERT IGNORE INTO local_library (tmdb_id, media_type, season_number, episode_number, file_path, title_keyword) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE tmdb_id = VALUES(tmdb_id)',
+                            [showTmdbId ? String(showTmdbId) : null, 'tv', seasonNumber, episodeNumber, filePath, showName]
+                        );
+                        scannedCount++;
+                    }
+                }
+            }
+        }
+
+        res.json({ success: true, scannedCount, mappedCount });
+    } catch (err: any) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post("/api/admin/overrides", ensureDB, adminOnly, async (req, res) => {
     const { id, title, tmdb_id, media_type, season_number, episode_number, video_url, intro_start, intro_end, custom_title, custom_overview } = req.body;
     try {
@@ -1784,12 +2013,9 @@ app.get("/api/recommendations", ensureDB, async (req, res) => {
           }
         });
         
-        const response: GenerateContentResponse = await ai.models.generateContent({
+        const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
-            contents: [{
-                role: "user",
-                parts: [{ text: `Based on these movies/TV shows: ${titles}, recommend 5 similar popular titles. Return ONLY a JSON array of strings (the titles). No markdown, no explanation.` }]
-            }]
+            contents: `Based on these movies/TV shows: ${titles}, recommend 5 similar popular titles. Return ONLY a JSON array of strings (the titles). No markdown, no explanation.`
         });
 
         const responseText = response.text || "[]";
@@ -1829,31 +2055,32 @@ async function startServer() {
     }
   }, 15000); // Check every 15s for better responsiveness
 
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+  try {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Attaching Vite middleware...");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      console.log("Serving production assets...");
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
+  } catch (err: any) {
+    console.error("Vite/Static serve failed to initialize:", err.message);
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`>>> Server process active on port ${PORT}`);
   });
 }
 
 export default app;
 
-// Only start the server if NOT in test mode. 
 // In AI Studio / Cloud Run, we always want to start the server.
-if (process.env.NODE_ENV !== "test") {
-  startServer();
-} else if (process.env.VERCEL) {
-    initDB();
-}
+startServer();

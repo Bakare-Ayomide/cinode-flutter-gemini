@@ -73,7 +73,8 @@ export const movieApi = {
   getRecommendations: () => api.get<string[]>('/recommendations').then(res => res.data),
   getHistory: () => api.get<any[]>('/user/history').then(res => res.data),
   addToHistory: (item: any) => api.post('/history', item),
-  login: (email: string) => api.post('/user/login', { email }),
+  login: (data: { email: string, password?: string, username?: string, isSignUp?: boolean }) => api.post('/user/login', data),
+  forgotPassword: (email: string) => api.post('/user/forgot-password', { email }),
   getUserMe: () => api.get('/user/me').then(res => res.data),
   // Admin APIs
   getAdminStats: () => api.get('/admin/stats').then(res => res.data),
@@ -134,4 +135,6 @@ export const movieApi = {
   // Playback Progress
   getPlaybackProgress: (type: string, id: number) => api.get(`/playback/progress/${type}/${id}`).then(res => res.data),
   savePlaybackProgress: (data: { movie_id: number | string, media_type: string, title?: string, poster_path?: string, progress_time: number, duration: number }) => api.post('/playback/progress', data).then(res => res.data),
+  getAdminLocalLibrary: () => api.get('/admin/local-library').then(res => res.data),
+  scanLocalLibrary: () => api.post('/admin/local-library/scan').then(res => res.data),
 };

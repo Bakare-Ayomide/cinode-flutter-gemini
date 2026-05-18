@@ -44,8 +44,10 @@ const AdminDashboard: React.FC = () => {
   const [earnings, setEarnings] = useState<any[]>([]);
   const [ads, setAds] = useState<Ad[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [localLibrary, setLocalLibrary] = useState<any[]>([]);
+  const [scanLoading, setScanLoading] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'content' | 'settings' | 'payments' | 'payconfig' | 'affiliates' | 'ads' | 'notifications'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'content' | 'archive' | 'settings' | 'payments' | 'payconfig' | 'affiliates' | 'ads' | 'notifications'>('stats');
   const [loading, setLoading] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<{id: number | string, email: string} | null>(null);
@@ -127,6 +129,9 @@ const AdminDashboard: React.FC = () => {
       } else if (activeTab === 'notifications') {
         const data = await movieApi.getAdminNotifications();
         setNotifications(data);
+      } else if (activeTab === 'archive') {
+        const data = await movieApi.getAdminLocalLibrary();
+        setLocalLibrary(data);
       }
     } catch (err: any) {
       showMsg('error', err.response?.data?.error || 'Fetch failed');
@@ -386,6 +391,14 @@ const AdminDashboard: React.FC = () => {
               >
                   <Film size={18} className={activeTab === 'content' ? 'text-white' : 'text-purple-500 group-hover:scale-110 transition-transform'} /> 
                   <span className="tracking-tight">Content Vault</span>
+              </button>
+
+              <button 
+                  onClick={() => { setActiveTab('archive'); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group ${activeTab === 'archive' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+              >
+                  <Database size={18} className={activeTab === 'archive' ? 'text-white' : 'text-cyan-500 group-hover:scale-110 transition-transform'} /> 
+                  <span className="tracking-tight">Local Archive</span>
               </button>
 
               <button 
@@ -1472,6 +1485,102 @@ const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'archive' && (
+            <div className="space-y-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-serif italic text-white tracking-tighter">Local Archive Shelf</h2>
+                  <p className="text-xs text-white/40 uppercase tracking-widest font-black italic">Manage and map files detected in your VPS uploads directory.</p>
+                </div>
+                <button 
+                  onClick={async () => {
+                    setScanLoading(true);
+                    try {
+                      const res = await movieApi.scanLocalLibrary();
+                      showMsg('success', `Scan Complete: ${res.scannedCount} items found, ${res.mappedCount} mapped automatically.`);
+                      fetchData();
+                    } catch (err) {
+                      showMsg('error', 'Scan failed');
+                    } finally {
+                      setScanLoading(false);
+                    }
+                  }}
+                  disabled={scanLoading}
+                  className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-[0.3em] text-[10px] rounded-2xl transition-all shadow-xl active:scale-95 disabled:opacity-50 flex items-center gap-3"
+                >
+                  {scanLoading ? <RefreshCw className="animate-spin" size={16} /> : <RefreshCw size={16} />}
+                  {scanLoading ? 'Mapping Signals...' : 'Scan & Map Vault'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Archive Protocol</h3>
+                  <div className="bg-[#0D0D0E]/50 border border-white/5 rounded-[2rem] p-8 space-y-6">
+                    <p className="text-xs text-white/60 leading-relaxed italic font-medium">To populate your archive, organize your VPS files as follows:</p>
+                    <div className="space-y-4 font-mono text-[10px] text-red-400">
+                      <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5">
+                        <span className="text-white/20">/uploads/movies/</span>
+                        <span>Movie Title (Year).mp4</span>
+                      </div>
+                      <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5">
+                        <span className="text-white/20">/uploads/tv/</span>
+                        <span>Show Name/Season 1/Episode 1.mp4</span>
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-white/20 uppercase tracking-[0.2em] font-black italic">Cinode will attempt to match metadata from TMDB base on directory and keywords.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                   <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Mapped Catalog ({localLibrary.length})</h3>
+                   <div className="bg-[#0D0D0E] border border-white/5 rounded-[2rem] overflow-hidden shadow-2xl maxHeight-[600px] overflow-y-auto no-scrollbar">
+                      {localLibrary.length === 0 ? (
+                        <div className="p-20 text-center space-y-4">
+                           <Database size={40} className="mx-auto text-white/5" />
+                           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10">Archive is vacant.</p>
+                        </div>
+                      ) : (
+                        localLibrary.map((item: any) => (
+                          <div key={item.id} className="p-6 border-b border-white/5 hover:bg-white/[0.02] transition-all group flex items-start gap-4">
+                             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-white/10 ${item.tmdb_id ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                                {item.tmdb_id ? <Check size={14} /> : <X size={14} />}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                               <div className="flex items-center gap-2 mb-1">
+                                 <span className="text-[8px] font-black uppercase tracking-widest text-white/20">{item.media_type}</span>
+                                 <span className="text-white/10">•</span>
+                                 <span className="text-xs font-serif italic text-white truncate">{item.title_keyword}</span>
+                               </div>
+                               <p className="text-[9px] text-white/30 truncate font-mono">{item.file_path}</p>
+                               {item.media_type === 'tv' && (
+                                 <p className="text-[8px] text-red-500/60 font-black uppercase tracking-widest mt-1">S{item.season_number} E{item.episode_number}</p>
+                               )}
+                             </div>
+                             <div className="text-right">
+                                {item.tmdb_id ? (
+                                  <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-1 rounded">TMDB: {item.tmdb_id}</span>
+                                ) : (
+                                  <button 
+                                    onClick={() => {
+                                      const id = prompt(`Enter TMDB ID for ${item.title_keyword}`);
+                                      if (id) {
+                                         // Logic to manually link if needed
+                                      }
+                                    }}
+                                    className="text-[8px] font-black text-red-500 hover:text-white uppercase tracking-widest underline underline-offset-4"
+                                  >Link ID</button>
+                                )}
+                             </div>
+                          </div>
+                        ))
+                      )}
+                   </div>
                 </div>
               </div>
             </div>

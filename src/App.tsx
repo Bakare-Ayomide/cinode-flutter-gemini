@@ -47,6 +47,11 @@ export default function App() {
   const [user, setUser] = useState<string | null>(localStorage.getItem('cinode_user'));
   const [isAdmin, setIsAdmin] = useState(false);
   const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [trending, setTrending] = useState<Movie[]>([]);
   const [trendingTv, setTrendingTv] = useState<Movie[]>([]);
   const [actionMovies, setActionMovies] = useState<Movie[]>([]);
@@ -105,6 +110,11 @@ export default function App() {
   }, [searchHistory]);
 
   useEffect(() => {
+    // Splash screen timer
+    const timer = setTimeout(() => {
+      setIsSplashVisible(false);
+    }, 3000);
+    
     checkDbStatus();
     if (user) {
       setAuthEmail(user);
@@ -292,11 +302,18 @@ export default function App() {
     if (!emailInput.includes('@')) return;
     setLoading(true);
     try {
-      await movieApi.login(emailInput);
-      localStorage.setItem('cinode_user', emailInput);
+      const res = await movieApi.login({ 
+        email: emailInput, 
+        password: passwordInput, 
+        username: usernameInput,
+        isSignUp 
+      });
+      if (rememberMe) {
+          localStorage.setItem('cinode_user', emailInput);
+      }
       setUser(emailInput);
-    } catch (err) {
-      alert("Login failed");
+    } catch (err: any) {
+      alert(err.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -397,56 +414,150 @@ export default function App() {
     }
   };
 
+  if (isSplashVisible) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0B] flex flex-col items-center justify-center p-6 font-sans">
+         <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="text-center space-y-8"
+         >
+            <div className="w-24 h-24 bg-red-600 rounded-2xl flex items-center justify-center mx-auto text-5xl font-bold text-white shadow-[0_0_50px_rgba(220,38,38,0.5)]">
+              <img src="/assets/icon.png" alt="Cinode" className="w-16 h-16 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+              <svg viewBox="0 0 24 24" fill="none" className="w-16 h-16 absolute" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-6xl font-serif italic text-white tracking-tighter">Cinode</h1>
+              <p className="text-[10px] uppercase tracking-[0.4em] font-black text-white/20">The Vault of Cinematics</p>
+            </div>
+            <div className="w-12 h-[2px] bg-red-600 mx-auto mt-12 animate-pulse" />
+         </motion.div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center p-6 font-sans text-[#E5E5E5]">
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full space-y-12 text-center"
+          className="max-w-md w-full space-y-12"
         >
-          <div className="space-y-4">
-            <div className="w-16 h-16 bg-red-600 rounded-lg flex items-center justify-center mx-auto text-3xl font-bold text-white shadow-2xl shadow-red-600/40">
-              <svg viewBox="0 0 24 24" fill="none" className="w-10 h-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <div className="space-y-4 text-center">
+            <div className="w-16 h-16 bg-red-600 rounded-lg flex items-center justify-center mx-auto shadow-2xl shadow-red-600/40 relative">
+               <img src="/assets/icon.png" alt="Icon" className="w-10 h-10 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+               <svg viewBox="0 0 24 24" fill="none" className="w-10 h-10 absolute" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
               </svg>
             </div>
             <h1 className="text-5xl font-serif italic font-light tracking-tighter uppercase">Cinode</h1>
           </div>
           
-          <div className="space-y-8 bg-white/[0.02] border border-white/5 p-12 backdrop-blur-sm">
-            <div className="space-y-2">
-                <h2 className="text-xs uppercase tracking-[0.3em] font-bold text-white/40">Access Personal Cinema</h2>
-                <p className="text-sm font-light text-white/60">Enter your credentials to continue the journey.</p>
-                {!dbStatus && (
-                  <div className="mt-4 p-3 bg-red-600/10 border border-red-600/20 rounded">
-                    <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest leading-relaxed">
-                      {dbErrorMessage || "Database initialization failed."}
-                    </p>
-                  </div>
-                )}
+          <div className="bg-white/[0.02] border border-white/5 p-8 md:p-12 backdrop-blur-sm rounded-3xl shadow-2xl">
+            <div className="text-center space-y-2 mb-8">
+                <h2 className="text-[10px] uppercase tracking-[0.3em] font-bold text-white/40">{isSignUp ? 'Establish Identity' : 'Authenticate Entry'}</h2>
+                <p className="text-xs font-medium text-white/60">{isSignUp ? 'Join the premium circle of cinemapiles.' : 'Unlock your curated vault of motion pictures.'}</p>
             </div>
             
-            <form onSubmit={handleLogin} className="space-y-8 text-left">
-              <div className="space-y-4">
-                <label className="text-[10px] uppercase tracking-widest text-white/30 font-bold block">Digital Identity</label>
+            <form onSubmit={handleLogin} className="space-y-6">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-widest text-white/30 font-bold block">Codename (Username)</label>
+                  <input 
+                    type="text" 
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value)}
+                    className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-red-600 transition-all font-medium text-sm placeholder:text-white/5 text-white"
+                    placeholder="CHOOSE A CODENAME"
+                  />
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-widest text-white/30 font-bold block">Digital Address (Email)</label>
                 <input 
                   type="email" 
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
-                  className="w-full bg-transparent border-b border-white/10 py-3 focus:outline-none focus:border-red-600 transition-all font-light text-lg placeholder:text-white/5"
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-red-600 transition-all font-medium text-sm placeholder:text-white/5 text-white"
                   placeholder="EMAIL@DOMAIN.COM"
                   required
                 />
               </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] uppercase tracking-widest text-white/30 font-bold block">Secret Key (Password)</label>
+                  {!isSignUp && (
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        if (!emailInput) return alert("Please enter email first");
+                        try {
+                          await movieApi.forgotPassword(emailInput);
+                          alert("A reset link has been simulated. Check your identity vault.");
+                        } catch(e) { alert("Email not found"); }
+                      }}
+                      className="text-[9px] uppercase font-black tracking-widest text-red-500 hover:text-white transition-colors"
+                    >
+                      Leak Password?
+                    </button>
+                  )}
+                </div>
+                <input 
+                  type="password" 
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-red-600 transition-all font-medium text-sm placeholder:text-white/5 text-white"
+                  placeholder="••••••••••••"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-3 py-2">
+                <button 
+                  type="button"
+                  onClick={() => setRememberMe(!rememberMe)}
+                  className={`w-10 h-5 rounded-full transition-all relative ${rememberMe ? 'bg-red-600' : 'bg-white/10'}`}
+                >
+                  <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${rememberMe ? 'left-6' : 'left-1'}`} />
+                </button>
+                <span className="text-[10px] uppercase font-black text-white/20 tracking-widest">Persist Session</span>
+              </div>
+
               <button 
                 type="submit"
                 disabled={loading}
-                className="w-full bg-white text-black font-bold py-5 uppercase tracking-[0.2em] text-xs hover:bg-red-600 hover:text-white transition-all disabled:opacity-50 active:scale-95"
+                className="w-full bg-white text-black font-black py-4 rounded-xl uppercase tracking-[0.2em] text-[10px] hover:bg-red-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 shadow-xl shadow-white/5"
               >
-                {loading ? "AUTHENTICATING..." : "SIGN IN / SIGN UP"}
+                {loading ? "INITIALIZING..." : (isSignUp ? "INITIALIZE ACCOUNT" : "AUTHENTICATE")}
               </button>
             </form>
+
+            <div className="mt-10 pt-6 border-t border-white/5 text-center">
+                <button 
+                  onClick={() => setIsSignUp(!isSignUp)}
+                  className="text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white transition-colors"
+                >
+                  {isSignUp ? 'Already identified? Sign In' : 'New to the vault? Create Profile'}
+                </button>
+            </div>
+            
+            {!dbStatus && (
+              <div className="mt-8 p-4 bg-red-600/10 border border-red-600/20 rounded-2xl">
+                <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest leading-relaxed">
+                  System Offline: {dbErrorMessage || "Identity server unreachable."}
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <div className="text-center space-y-4">
+             <p className="text-[8px] uppercase tracking-[0.4em] font-black text-white/10">Cinode Protocol v3.4.0</p>
           </div>
         </motion.div>
       </div>
