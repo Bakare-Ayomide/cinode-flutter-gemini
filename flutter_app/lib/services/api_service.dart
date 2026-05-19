@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/movie.dart';
 
 class ApiService {
-  String _baseUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app/api';
+  static const String _baseUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app/api';
   late final Dio _dio;
 
   ApiService() {
@@ -14,53 +14,6 @@ class ApiService {
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 30),
     ));
-    _init();
-  }
-
-  Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedUrl = prefs.getString('cinode_backend_url');
-    if (savedUrl != null && savedUrl.isNotEmpty) {
-      _updateBaseUrl(savedUrl);
-    }
-  }
-
-  void _updateBaseUrl(String url) {
-    _baseUrl = url.endsWith('/api') ? url : (url.endsWith('/') ? '${url}api' : '$url/api');
-    _dio.options.baseUrl = _baseUrl;
-  }
-
-  Future<void> setCustomBackend(String url) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (url.isEmpty) {
-      await prefs.remove('cinode_backend_url');
-    } else {
-      await prefs.setString('cinode_backend_url', url);
-      _updateBaseUrl(url);
-    }
-  }
-
-  Future<String?> discoverBackend() async {
-    final productionUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app/api';
-    final candidates = [
-       _baseUrl,
-       productionUrl,
-    ];
-
-    for (var url in candidates) {
-      try {
-        final probeDio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 3)));
-        final cleanUrl = url.endsWith('/api') ? url : (url.endsWith('/') ? '${url}api' : '$url/api');
-        final response = await probeDio.get('$cleanUrl/health');
-        if (response.statusCode == 200 && response.data['status'] == 'ok') {
-          _updateBaseUrl(url);
-          return url;
-        }
-      } catch (e) {
-        // Continue
-      }
-    }
-    return null;
   }
 
   Future<Movie?> getMovieDetails(String type, String id) async {
@@ -705,6 +658,14 @@ class ApiService {
   Future<void> adminDeleteOverride(String email, int id) async {
     await _dio.delete(
       '/admin/overrides/$id',
+      options: Options(headers: {'x-user-email': email}),
+    );
+  }
+
+  Future<void> saveSystemSetting(String email, String key, String value) async {
+    await _dio.post(
+      '/admin/settings',
+      data: {'key': key, 'value': value},
       options: Options(headers: {'x-user-email': email}),
     );
   }

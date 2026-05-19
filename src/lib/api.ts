@@ -1,88 +1,37 @@
 import axios from 'axios';
 import { Movie, MovieDetails, Review, WatchlistItem } from '../types';
 
-let workingBaseUrl = '';
-
 export const getBaseUrl = () => {
-  if (workingBaseUrl) return workingBaseUrl;
-  
-  const lStorageUrl = typeof window !== 'undefined' ? localStorage.getItem('cinode_backend_url') : null;
-  if (lStorageUrl) return lStorageUrl;
-
   const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
   const productionUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
   
   if (typeof window === 'undefined') return envUrl || productionUrl;
 
   const hostname = window.location.hostname;
-  const isNative = window.location.protocol === 'capacitor:' || 
-                   hostname === 'localhost' && !window.location.port ||
-                   hostname === 'localhost' && window.location.port === '3000' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-                   
+  const protocol = window.location.protocol;
+  
+  // Capacitor check
+  const isNative = protocol === 'capacitor:';
+  // AI Studio check
   const isAIStudio = hostname.includes('run.app') || hostname.includes('google.com');
 
   if (isNative) {
-    return envUrl || productionUrl;
+    // On native mobile, prioritize the AI Studio production URL
+    return productionUrl || envUrl;
   }
 
-  if (isAIStudio) return '';
-
-  return envUrl || ''; 
-};
-
-// Nexus Probing: Automatically find the best working backend
-export const discoverBackend = async () => {
-  if (typeof window === 'undefined') return;
-
-  const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
-  const productionUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
-  const currentOrigin = window.location.origin;
-  
-  const candidates = [
-    localStorage.getItem('cinode_backend_url'),
-    envUrl,
-    currentOrigin,
-    productionUrl
-  ].filter(Boolean) as string[];
-
-  // Deduplicate and filter out capacitor/localhost for probing unless specifically envUrl
-  const uniqueCandidates = Array.from(new Set(candidates)).filter(url => {
-    if (url === 'capacitor://localhost' || url === 'http://localhost') return false;
-    return true;
-  });
-
-  for (const url of uniqueCandidates) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout for probing
-      
-      const res = await fetch(`${url}/api/health`, { 
-        signal: controller.signal,
-        headers: { 'Accept': 'application/json' }
-      });
-      clearTimeout(timeoutId);
-      
-      const data = await res.json();
-      if (data.status === 'ok') {
-        console.log(`[Nexus] Backend discovered at: ${url}`);
-        workingBaseUrl = url;
-        // If it's the current origin or AI Studio (already handled by relative), we can just use empty string for web
-        if (url === currentOrigin && !window.location.protocol.startsWith('capacitor')) {
-            workingBaseUrl = '';
-        }
-        return workingBaseUrl;
-      }
-    } catch (e) {
-      // Continue to next candidate
-    }
+  if (isAIStudio) {
+    // On the AI Studio web environment, use relative path
+    return '';
   }
-  
-  console.warn("[Nexus] No customized backend found, falling back to defaults.");
+
+  // Fallback to Env or Production URL for other web deployments (like Coolify)
+  return envUrl || productionUrl;
 };
 
 const api = axios.create({
   baseURL: getBaseUrl() + '/api',
-  timeout: 30000, // 30 seconds to handle slow DB/cloud responses
+  timeout: 30000,
 });
 
 // Add error interceptor with better logging

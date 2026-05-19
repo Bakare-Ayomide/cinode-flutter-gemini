@@ -29,7 +29,7 @@ import {
   Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { movieApi, setAuthEmail, getBaseUrl, discoverBackend } from './lib/api';
+import { movieApi, setAuthEmail, getBaseUrl } from './lib/api';
 import { Movie, MovieDetails, Review, WatchlistItem } from './types';
 import AdminDashboard from './components/AdminDashboard';
 import DownloadsScreen from './components/DownloadsScreen';
@@ -116,7 +116,6 @@ export default function App() {
     }, 3000);
     
     const initApp = async () => {
-      await discoverBackend();
       checkDbStatus();
       if (user) {
         setAuthEmail(user);
@@ -706,7 +705,6 @@ export default function App() {
                     <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">System Offline: {dbErrorMessage || 'Database in read-only mode.'}</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <button onClick={() => setActiveTab('profile')} className="text-[10px] font-bold uppercase tracking-widest text-white underline underline-offset-4 decoration-red-600/30 hover:decoration-red-600 transition-all">Configure Nexus</button>
                     <button onClick={checkDbStatus} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white">Retry Connection</button>
                 </div>
             </div>
