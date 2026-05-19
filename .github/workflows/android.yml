@@ -31,8 +31,11 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Capacitor Sync
+      - name: Capacitor Setup and Sync
         run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
           npx cap sync android
 
       - name: Build Android APK
