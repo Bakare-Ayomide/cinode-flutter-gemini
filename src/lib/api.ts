@@ -2,22 +2,31 @@ import axios from 'axios';
 import { Movie, MovieDetails, Review, WatchlistItem } from '../types';
 
 export const getBaseUrl = () => {
-  const envUrl = ((import.meta as any).env.VITE_API_URL || '').replace(/\/$/, '');
+  const envUrl = ((import.meta as any).env.VITE_API_URL || '').trim().replace(/\/$/, '');
   const productionUrl = 'https://ais-pre-vvumg5dcacm3ujgd4h6brh-843881588574.europe-west2.run.app';
   
-  if (typeof window === 'undefined') return envUrl || productionUrl;
+  // If envUrl is provided, ensure it has a protocol and use it
+  if (envUrl) {
+    if (!envUrl.startsWith('http')) {
+      return `http://${envUrl}`;
+    }
+    return envUrl;
+  }
+
+  if (typeof window === 'undefined') return productionUrl;
 
   const hostname = window.location.hostname;
   const protocol = window.location.protocol;
+  const origin = window.location.origin;
   
   // Capacitor check
   const isNative = protocol === 'capacitor:';
   // AI Studio check
-  const isAIStudio = hostname.includes('run.app') || hostname.includes('google.com');
+  const isAIStudio = hostname.includes('run.app') || hostname.includes('google.com') || hostname === 'localhost';
 
   if (isNative) {
-    // On native mobile, prioritize the AI Studio production URL
-    return productionUrl || envUrl;
+    // On native mobile, prioritize the production URL if no environment override
+    return productionUrl;
   }
 
   if (isAIStudio) {
@@ -25,12 +34,16 @@ export const getBaseUrl = () => {
     return '';
   }
 
-  // Fallback to Env or Production URL for other web deployments (like Coolify)
-  return envUrl || productionUrl;
+  // Fallback to current origin for other web deployments (VPS, Coolify, etc.)
+  return origin.replace(/\/$/, '');
 };
 
 const api = axios.create({
-  baseURL: getBaseUrl() + '/api',
+  baseURL: (() => {
+    const url = getBaseUrl();
+    console.log(`[API] Initializing with Base URL: "${url || '(relative)'}"`);
+    return url + '/api';
+  })(),
   timeout: 30000,
 });
 

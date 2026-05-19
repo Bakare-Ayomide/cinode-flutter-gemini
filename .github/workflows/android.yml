@@ -21,6 +21,8 @@ jobs:
 
       - name: Build Web Assets
         run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://163.254.193.7:3000' }}
 
       - name: Set up Java
         uses: actions/setup-java@v3
@@ -29,14 +31,9 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Add Android Platform if missing
+      - name: Capacitor Sync
         run: |
-          if [ ! -d "android" ]; then
-            npx cap add android
-          fi
-
-      - name: Sync Capacitor
-        run: npx cap sync android
+          npx cap sync android
 
       - name: Build Android APK
         run: |
